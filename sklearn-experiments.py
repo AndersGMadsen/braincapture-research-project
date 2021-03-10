@@ -62,30 +62,7 @@ y_train = y_par[:y_split]
 X_test = X_par[X_split:]
 y_test = y_par[y_split:]
 
-'''we up sample only the train data using SMOTE'''
 
-X_train_res, y_train_res = SMOTE().fit_resample(X_train, y_train)
-
-shuffler = np.random.permutation(len(X_train_res))
-X_train_res = X_train_res[shuffler]
-y_train_res = y_train_res[shuffler]
-
-
-# for now, we only use a small part of data
-part = 1/20
-X_train_res = X_train_res[:int(part * len(X_train_res))]
-y_train_res = y_train_res[:int(part * len(y_train_res))]
-
-
-
-
-#%%
-
-scaler = StandardScaler().fit(X_train_res)
-X_train_res = scaler.transform(X_train_res)
-X_test = scaler.transform(X_test)
-   
-#%%
 '''we under sample only the train data using MissNear'''
 '''
 X_train_res, y_train_res = NearMiss().fit_resample(X_train, y_train)
