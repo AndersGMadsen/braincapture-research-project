@@ -98,7 +98,7 @@ for model in models:
 
     print("Test data: Accuracy:", np.mean(model.predict(X_test) == y_test) * 100)
     print("Test data: Balanced accuracy:", balanced_accuracy_score(y_test, y_pred) * 100)
-    print("Test data: F1-Score:", 100 - f1_score(y_test, y_pred) * 100)
+    print("Test data: F1-Score:", f1_score(y_test, y_pred) * 100)
     #print("Test data: F1-Score:", roc_auc_score(y_test, model.decision_function(X_test)) * 100)
     print()
 
