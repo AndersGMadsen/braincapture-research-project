@@ -110,7 +110,7 @@ for model in models:
     print("Test: Precision:", round(precision * 100, 3), '%')
     print("Test: F1-Score:", round((2 * recall * precision / (recall + precision))  * 100, 3), '%')
     print("Test: Weighted F1-Score:", round(f1_score(y_test, y_pred, average='weighted') * 100, 3), '%')
-    print()
+    print() 
 
 
 
