@@ -19,8 +19,8 @@ from sklearn.metrics import precision_score
 
 # Sampling Methods
 from imblearn.over_sampling import SMOTE
-
-
+from imblearn.under_sampling import NearMiss
+from imblearn.under_sampling import ClusterCentroids
 
 
 np.random.seed(26060000)
@@ -66,6 +66,26 @@ y_train = y_par[:y_split]
 X_test = X_par[X_split:]
 y_test = y_par[y_split:]
 
+
+'''we under sample only the train data using MissNear'''
+'''
+X_train_res, y_train_res = NearMiss().fit_resample(X_train, y_train)
+
+shuffler = np.random.permutation(len(X_train_res))
+X_train_res = X_train_res[shuffler]
+y_train_res = y_train_res[shuffler]
+
+# for now, we only use a small part of data
+part = 1 / 20
+X_train_res = X_train_res[:int(part * len(X_train_res))]
+y_train_res = y_train_res[:int(part * len(y_train_res))]
+
+# %%
+
+scaler = StandardScaler().fit(X_train_res)
+X_train_res = scaler.transform(X_train_res)
+X_test = scaler.transform(X_test)
+'''
 # we up sample only the train data using SMOTE
 
 X_train_res, y_train_res = SMOTE().fit_resample(X_train, y_train)
@@ -74,29 +94,46 @@ shuffler = np.random.permutation(len(X_train_res))
 X_train_res = X_train_res[shuffler]
 y_train_res = y_train_res[shuffler]
 
-
 # for now, we only use a small part of data
+
 part = 1/20
 X_train_res = X_train_res[:int(part * len(X_train_res))]
 y_train_res = y_train_res[:int(part * len(y_train_res))]
 
-
-
-
-#%%
+# %%
 
 scaler = StandardScaler().fit(X_train_res)
 X_train_res = scaler.transform(X_train_res)
 X_test = scaler.transform(X_test)
-   
-#%%
 
+
+'''undersample cluster centroids'''
+
+'''
+X_train_res, y_train_res = ClusterCentroids().fit_resample(X_train, y_train)
+
+shuffler = np.random.permutation(len(X_train_res))
+X_train_res = X_train_res[shuffler]
+y_train_res = y_train_res[shuffler]
+
+# for now, we only use a small part of data
+part = 1 / 20
+X_train_res = X_train_res[:int(part * len(X_train_res))]
+y_train_res = y_train_res[:int(part * len(y_train_res))]
+
+# %%
+
+scaler = StandardScaler().fit(X_train_res)
+X_train_res = scaler.transform(X_train_res)
+X_test = scaler.transform(X_test)
+'''
 
 models = [RandomForestClassifier(n_jobs=3), MLPClassifier(), LinearDiscriminantAnalysis()]
 
 for model in models:
     model.fit(X_train_res, y_train_res)
     y_pred = model.predict(X_test)
+
     print('model:', model)
     print("Train: Accuracy:", round(np.mean(model.predict(X_train_res) == y_train_res) * 100, 3), '%')
 
@@ -110,7 +147,8 @@ for model in models:
     print("Test: Precision:", round(precision * 100, 3), '%')
     print("Test: F1-Score:", round((2 * recall * precision / (recall + precision))  * 100, 3), '%')
     print("Test: Weighted F1-Score:", round(f1_score(y_test, y_pred, average='weighted') * 100, 3), '%')
-    print() 
+    print()
+
 
 
 
