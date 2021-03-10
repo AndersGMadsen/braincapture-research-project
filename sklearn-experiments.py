@@ -1,5 +1,6 @@
 # Classics
 import numpy as np
+from tqdm import tqdm
 
 # Models
 from sklearn.preprocessing import StandardScaler
@@ -12,13 +13,16 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import f1_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+
 
 # Sampling Methods
 from imblearn.over_sampling import SMOTE
 
 
 
-from tqdm import tqdm
+
 np.random.seed(26060000)
 #%%
 
@@ -72,7 +76,7 @@ y_train_res = y_train_res[shuffler]
 
 
 # for now, we only use a small part of data
-part = 10/20
+part = 1/20
 X_train_res = X_train_res[:int(part * len(X_train_res))]
 y_train_res = y_train_res[:int(part * len(y_train_res))]
 
@@ -93,13 +97,19 @@ models = [RandomForestClassifier(n_jobs=3), MLPClassifier(), LinearDiscriminantA
 for model in models:
     model.fit(X_train_res, y_train_res)
     y_pred = model.predict(X_test)
-    print('model: ', model)
-    print("Train data: Accuracy:", np.mean(model.predict(X_train_res) == y_train_res) * 100)
+    print('model:', model)
+    print("Train: Accuracy:", round(np.mean(model.predict(X_train_res) == y_train_res) * 100, 3), '%')
 
-    print("Test data: Accuracy:", np.mean(model.predict(X_test) == y_test) * 100)
-    print("Test data: Balanced accuracy:", balanced_accuracy_score(y_test, y_pred) * 100)
-    print("Test data: F1-Score:", 100 - f1_score(y_test, y_pred) * 100)
-    #print("Test data: F1-Score:", roc_auc_score(y_test, model.decision_function(X_test)) * 100)
+    print("Test: Accuracy:", round(np.mean(model.predict(X_test) == y_test) * 100, 3), '%')
+    print("Test: Balanced accuracy:", round(balanced_accuracy_score(y_test, y_pred) * 100, 3), '%')
+    print("Test: AUC-Score:", round(roc_auc_score(y_test, y_pred) * 100, 3), '%')
+
+    recall = recall_score(y_test, y_pred)
+    print("Test: Recall:", round(recall * 100, 3), '%')
+    precision = precision_score(y_test, y_pred)
+    print("Test: Precision:", round(precision * 100, 3), '%')
+    print("Test: F1-Score:", round((2 * recall * precision / (recall + precision))  * 100, 3), '%')
+    print("Test: Weighted F1-Score:", round(f1_score(y_test, y_pred, average='weighted') * 100, 3), '%')
     print()
 
 
