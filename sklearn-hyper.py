@@ -2,11 +2,14 @@
 import numpy as np
 import os
 from tqdm import tqdm
-from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+
+
+
 
 # Models
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils import resample
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -24,6 +27,9 @@ from sklearn.metrics import classification_report
 
 from sklearn.datasets import load_boston
 from sklearn.ensemble import GradientBoostingRegressor
+
+
+# Optimization
 from sklearn.model_selection import cross_val_score
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
@@ -41,6 +47,9 @@ np.random.seed(26060000)
 
 label_dict = {'chew': 0, 'elpp': 1, 'eyem': 2, 'musc': 3, 'shiv': 4, 'null': 5}
 
+
+# Load and filter data
+
 X = np.load("X1.npy")
 y = np.load("Y1.npy")
 G = np.load("groups1.npy")
@@ -53,22 +62,34 @@ G = G[nan_filter]
 
 
 #%%
+
+# if window has both null and artifact, delete artifact
+
 for i in range(len(y)):
     if np.sum(y[i]) > 1:
         y[i][5] = 0
 
 #%%
 
+# delete all windows with more than one artifact (not very many)
+
 X = np.delete(X, np.where(np.sum(y, axis=1) != 1), axis=0)
 G = np.delete(G, np.where(np.sum(y, axis=1) != 1), axis=0)
 y = np.delete(y, np.where(np.sum(y, axis=1) != 1), axis=0)
 
+
+# reverse hot-encode y
 
 Y = np.empty(len(y), dtype=int)
 for i in range(len(Y)):
     Y[i] = np.where(y[i] == 1)[0][0]
     
 #%%
+
+
+# Split data 
+# Using groups to make sure it is on patient basis
+
 Gidxs = resample(np.unique(G), replace=False, n_samples=int(0.8*len(np.unique(G))))
 
 Xpar = X[np.isin(G, Gidxs)]
@@ -79,6 +100,7 @@ Xval = X[~np.isin(G, Gidxs)]
 Yval = Y[~np.isin(G, Gidxs)]
 Gval = G[~np.isin(G, Gidxs)]
     
+
 Gidxs = resample(np.unique(Gpar), replace=False, n_samples=int(0.75*len(np.unique(Gpar))))
 
 Xtrain = Xpar[np.isin(Gpar, Gidxs)]
@@ -90,6 +112,8 @@ null_idxs = np.where(Ytrain == 5)[0]
 
 #%%
 
+# defining model and parameter space 
+
 model = RandomForestClassifier(n_jobs=-1, verbose=False)
 
 space = [Integer(100, 1000, name="n_estimators"),
@@ -100,13 +124,17 @@ space = [Integer(100, 1000, name="n_estimators"),
          Integer(2, 10, name="min_samples_split")]
 
 #%%
-pbar = tqdm(total=300)
+n_calls=300
+pbar = tqdm(total=n_calls)
 
 @use_named_args(space)
 def objective(**params):
     sf = params.pop("sample_fraction")
-    null_mask = resample(null_idxs, replace=False, n_samples=int((1-sf)*len(null_idxs)))
     
+    # Randomly down samling majority class
+    null_mask = resample(null_idxs, replace=False, n_samples=int((1-sf)*len(null_idxs))) 
+    
+    # Fitting model
     model.fit(np.delete(Xtrain, null_mask, axis=0), np.delete(Ytrain, null_mask, axis=0))
     Ypred = model.predict(Xtest)
     balanced_accuracy = balanced_accuracy_score(Ytest, Ypred)    
@@ -116,8 +144,8 @@ def objective(**params):
     
     return -balanced_accuracy
 
-model_gp = gp_minimize(objective, space, n_calls=300)
-#model_gp = forest_minimize(objective, space, n_calls=300)
+#model_gp = gp_minimize(objective, space, n_calls=n_calls)
+model_gp = forest_minimize(objective, space, n_calls=n_calls)
 
 print()
 print("Best score=%.4f" % model_gp.fun)
