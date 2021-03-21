@@ -98,28 +98,32 @@ for i in range(len(Y)):
     
 patients = pd.DataFrame((Y[G==patient] for patient in range(211)), index=range(211)).T
 
-#%%
 
+patients = patient.fillna(-1)
 
-patients[[0, 1, 2, 3, 4, 5]].plot()
+for i in range(211, 225):
+    patients[i] = np.repeat(6, 17333)
+
 
 
 #%% 
 
 
 patient = patients[1]
-sqrt = 
-while len(patient)
+sqrt = np.sqrt(len(patient))
+#while len(patient)
 
-data = np.reshape(np.array(patient.dropna()[:53**2]), (53, 53))
+data = np.reshape(np.array(patients[:1]), (15, 15))
 
 # create discrete colormap
-cmap = colors.ListedColormap(['yellow', 'red','lime',  'orange', 'purple', 'cornflowerblue'])
-bounds = [0,1, 2, 3, 4, 5]
+my_colors = ['yellow', 'red','lime','orange', 'purple', 'cornflowerblue', 'white']
+cmap = colors.ListedColormap(my_colors)
+bounds = [0, 1, 2, 3, 4, 5, 6, 7]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
 fig, ax = plt.subplots()
 ax.imshow(data, cmap=cmap, norm=norm)
+ax.legend(label_dict.keys(), my_colors)
 
 # draw gridlines
 ax.grid(which='minor', axis='both', linestyle='-', color='k', linewidth=2)
