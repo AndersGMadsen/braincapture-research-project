@@ -39,7 +39,11 @@ from sklearn.ensemble import GradientBoostingRegressor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import colors
+import matplotlib.patches as mpatches
 
+# Fonts for pyplot
+plt.rcParams['font.sans-serif'] = "Georgia"
+plt.rcParams['font.family'] = "sans-serif"
 
 # Optimization
 from sklearn.model_selection import cross_val_score
@@ -48,6 +52,8 @@ from skopt.utils import use_named_args
 from skopt import gp_minimize
 from skopt import forest_minimize
 
+
+#%%
 
 
 def warn(*args, **kwargs):
@@ -99,34 +105,59 @@ for i in range(len(Y)):
 patients = pd.DataFrame((Y[G==patient] for patient in range(211)), index=range(211)).T
 
 
-patients = patient.fillna(-1)
+patients = patients.fillna(-1)
 
 for i in range(211, 225):
-    patients[i] = np.repeat(6, 17333)
+    patients[i] = np.repeat(-1, 17333)
 
 
 
 #%% 
 
-
-patient = patients[1]
-sqrt = np.sqrt(len(patient))
-#while len(patient)
-
-data = np.reshape(np.array(patients[:1]), (15, 15))
-
 # create discrete colormap
-my_colors = ['yellow', 'red','lime','orange', 'purple', 'cornflowerblue', 'white']
+my_colors = ['white', 'yellow', 'red','lime','orange', 'purple', 'cornflowerblue']
 cmap = colors.ListedColormap(my_colors)
-bounds = [0, 1, 2, 3, 4, 5, 6, 7]
+bounds = [-1.5, -.5, .5,  1.5, 2.5, 3.5, 4.5, 5.5]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
+# legend
+missing_data = mpatches.Patch(color=my_colors[0],ec='black', label='Missing data')
+chew = mpatches.Patch(color=my_colors[1], label='chew')
+elpp= mpatches.Patch(color=my_colors[2],label='elpp')
+eyem = mpatches.Patch(color=my_colors[3], label='eyem')
+musc= mpatches.Patch(color=my_colors[4], label='musc')
+shiv = mpatches.Patch(color=my_colors[5], label='shiv')
+null = mpatches.Patch(color=my_colors[6], label='null')
+                              
+# artifacts of all 210 patients as time series
+'''
+for frame in range(200):
+    data = np.reshape(np.array(patients.iloc[[frame]]), (15, 15))
+    
+    
+    fig, ax = plt.subplots()
+    ax.imshow(data, cmap=cmap, norm=norm)
+
+    plt.axis('off')
+    
+    
+    plt.legend(handles=[missing_data, chew, elpp, eyem, musc, shiv, null],
+               bbox_to_anchor=(1.05, 1.0), loc='upper left')
+    plt.title('Time series of the Artifacts of 210 Patients')
+    plt.show()
+
+'''
+
+data = np.reshape(np.array(patients[15][:50**2]), (50, 50))
+    
+    
 fig, ax = plt.subplots()
 ax.imshow(data, cmap=cmap, norm=norm)
-ax.legend(label_dict.keys(), my_colors)
 
-# draw gridlines
-ax.grid(which='minor', axis='both', linestyle='-', color='k', linewidth=2)
 plt.axis('off')
 
+
+plt.legend(handles=[missing_data, chew, elpp, eyem, musc, shiv, null],
+           bbox_to_anchor=(1.05, 1.0), loc='upper left')
+plt.title('Artifacts over time for 1 patient')
 plt.show()
