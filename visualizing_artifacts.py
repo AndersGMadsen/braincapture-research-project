@@ -55,18 +55,9 @@ from skopt import forest_minimize
 
 #%%
 
-
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
-
-np.random.seed(26060000)
+# Load and filter data
 
 label_dict = {'chew': 0, 'elpp': 1, 'eyem': 2, 'musc': 3, 'shiv': 4, 'null': 5}
-
-
-# Load and filter data
 
 X = np.load("X1.npy")
 y = np.load("Y1.npy")
@@ -107,32 +98,97 @@ patients = pd.DataFrame((Y[G==patient] for patient in range(211)), index=range(2
 
 patients = patients.fillna(-1)
 
-for i in range(211, 225):
-    patients[i] = np.repeat(-1, 17333)
-
-
 
 #%% 
 
 # create discrete colormap
+
+names = ['chew', 'elpp', 'eyem', 'musc', 'shiv', 'null']
 my_colors = ['white', 'yellow', 'red','lime','orange', 'purple', 'cornflowerblue']
+
 cmap = colors.ListedColormap(my_colors)
 bounds = [-1.5, -.5, .5,  1.5, 2.5, 3.5, 4.5, 5.5]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
 # legend
 missing_data = mpatches.Patch(color=my_colors[0],ec='black', label='Missing data')
-chew = mpatches.Patch(color=my_colors[1], label='chew')
-elpp= mpatches.Patch(color=my_colors[2],label='elpp')
-eyem = mpatches.Patch(color=my_colors[3], label='eyem')
-musc= mpatches.Patch(color=my_colors[4], label='musc')
-shiv = mpatches.Patch(color=my_colors[5], label='shiv')
-null = mpatches.Patch(color=my_colors[6], label='null')
+chew = mpatches.Patch(color=my_colors[1], label=names[0])
+elpp = mpatches.Patch(color=my_colors[2],label=names[1])
+eyem = mpatches.Patch(color=my_colors[3], label=names[2])
+musc = mpatches.Patch(color=my_colors[4], label=names[3])
+shiv = mpatches.Patch(color=my_colors[5], label=names[4])
+null = mpatches.Patch(color=my_colors[6], label=names[5])
                               
-# artifacts of all 210 patients as time series
-'''
-for frame in range(200):
-    data = np.reshape(np.array(patients.iloc[[frame]]), (15, 15))
+
+
+
+# Lollipop
+
+
+
+patientsSTEM = patients.copy()
+namesSTEM = ['null', 'elpp', 'eyem', 'musc', 'shiv', 'chew']
+STEM_colors = ['cornflowerblue', 'red','lime','orange', 'purple', 'yellow']
+
+
+patientsSTEM = patientsSTEM.replace(5, 'null')
+patientsSTEM = patientsSTEM.replace(0, 5)
+patientsSTEM = patientsSTEM.replace('null', 0)
+
+#%%
+
+# Artifacts over time for 1 patient
+
+# imshow plot
+
+patient_id = 15
+
+data = np.reshape(np.array(patients[patient_id][:72**2]), (72, 72))
+    
+fig, ax = plt.subplots()
+ax.imshow(data, cmap=cmap, norm=norm)
+
+plt.axis('off')
+
+
+plt.legend(handles=[missing_data, chew, elpp, eyem, musc, shiv, null],
+           bbox_to_anchor=(1.05, 1.0), loc='upper left')
+plt.title('Artifacts over time for patient #' + str(patient_id), size=16)
+plt.show()
+
+
+
+# Lollipop plot
+
+STEMdata = patientsSTEM[patient_id][patientsSTEM[patient_id] > -1]
+x = np.linspace(0, len(STEMdata), len(STEMdata))
+
+STEM_colorsx = [STEM_colors[int(item)] for item in STEMdata]
+
+plt.scatter(x, STEMdata, c=STEM_colorsx)
+plt.vlines(x=x, ymin=0, ymax=STEMdata, color=STEM_colorsx, alpha=0.05)
+plt.yticks([0, 1, 2, 3, 4, 5], namesSTEM)
+
+plt.legend(handles=[chew, elpp, eyem, musc, shiv, null],
+           bbox_to_anchor=(1.05, 1.0), loc='upper left')
+plt.title('Artifacts over time for patient #' + str(patient_id), size=16)
+plt.show()
+
+
+
+#%%
+
+
+# Times series of artifacts of 210 patients
+
+patients225 = patients.copy()
+for i in range(211, 225):
+    patients225[i] = np.repeat(-1, 17333)
+
+
+
+for frame in range(300, 600):
+    data = np.reshape(np.array(patients225.iloc[[frame]]), (15, 15))
     
     
     fig, ax = plt.subplots()
@@ -143,21 +199,32 @@ for frame in range(200):
     
     plt.legend(handles=[missing_data, chew, elpp, eyem, musc, shiv, null],
                bbox_to_anchor=(1.05, 1.0), loc='upper left')
-    plt.title('Time series of the Artifacts of 210 Patients')
+    plt.title('Time series of the Artifacts of 210 Patients', size=12)
     plt.show()
 
-'''
+#%%
 
-data = np.reshape(np.array(patients[15][:50**2]), (50, 50))
-    
+# Artifacts over time for 210 patients
+
+#data = np.reshape(np.array(patients.loc[:100, ]), (210, 100))
+data = patients.loc[0:500,].T
     
 fig, ax = plt.subplots()
 ax.imshow(data, cmap=cmap, norm=norm)
 
-plt.axis('off')
+plt.axis('on')
 
 
 plt.legend(handles=[missing_data, chew, elpp, eyem, musc, shiv, null],
            bbox_to_anchor=(1.05, 1.0), loc='upper left')
-plt.title('Artifacts over time for 1 patient')
+plt.title('Artifacts over time for 210 patients', size=20)
+plt.ylabel('# Patient', size=16)
+plt.xlabel('# Window', size=16)
 plt.show()
+
+#%%
+
+
+
+
+
