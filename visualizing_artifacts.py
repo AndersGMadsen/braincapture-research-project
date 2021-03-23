@@ -12,8 +12,8 @@ from tqdm import tqdm
 import pandas as pd
 
 
-
 # Models
+'''
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
@@ -34,6 +34,7 @@ from sklearn.metrics import classification_report
 
 from sklearn.datasets import load_boston
 from sklearn.ensemble import GradientBoostingRegressor
+'''
 
 # plots
 import matplotlib.pyplot as plt
@@ -120,11 +121,7 @@ shiv = mpatches.Patch(color=my_colors[5], label=names[4])
 null = mpatches.Patch(color=my_colors[6], label=names[5])
                               
 
-
-
 # Lollipop
-
-
 
 patientsSTEM = patients.copy()
 namesSTEM = ['null', 'elpp', 'eyem', 'musc', 'shiv', 'chew']
@@ -174,6 +171,36 @@ plt.legend(handles=[chew, elpp, eyem, musc, shiv, null],
 plt.title('Artifacts over time for patient #' + str(patient_id), size=16)
 plt.show()
 
+#%%
+
+# Lollipop plots for 3 patients at a time
+
+patient_ids = [15, 17, 18]
+
+num_plots = len(patient_ids)
+fig, axes = plt.subplots(num_plots)
+
+fig.tight_layout(pad=2.0)
+
+for plot in range(num_plots):
+    patient_id = patient_ids[plot]
+    STEMdata = patientsSTEM[patient_id][patientsSTEM[patient_id] > -1]
+    x = np.linspace(0, len(STEMdata), len(STEMdata))
+    
+    STEM_colorsx = [STEM_colors[int(item)] for item in STEMdata]
+    
+    axes[plot].scatter(x, STEMdata, c=STEM_colorsx)
+    
+    plt.sca(axes[plot])
+    plt.vlines(x=x, ymin=0, ymax=STEMdata, color=STEM_colorsx, alpha=0.05)
+    plt.yticks([0, 1, 2, 3, 4, 5], namesSTEM)
+    
+
+    axes[plot].set_title('Artifacts over time for patient #' + str(patient_id), size=16)
+
+plt.legend(handles=[chew, elpp, eyem, musc, shiv, null],
+               bbox_to_anchor=(1.0, 5.0), loc='upper left')
+plt.show()
 
 
 #%%
@@ -184,7 +211,6 @@ plt.show()
 patients225 = patients.copy()
 for i in range(211, 225):
     patients225[i] = np.repeat(-1, 17333)
-
 
 
 for frame in range(300, 600):
