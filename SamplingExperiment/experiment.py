@@ -4,7 +4,7 @@ from tqdm import tqdm
 from copy import deepcopy
 from collections import Counter, defaultdict
 from datetime import datetime
-from json import dump
+from pickle import dump
 from os.path import exists
 from os import makedirs
 import argparse
@@ -37,36 +37,50 @@ from sklearn.linear_model import SGDClassifier
 # ----------------------------------------------------------------------------
 # System argument
 # ----------------------------------------------------------------------------
+if False:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--x', action='store', type=str, required=True)
+    parser.add_argument('--y', action='store', type=str, required=True)
+    parser.add_argument('--groups', action='store', type=str, required=True)
+    parser.add_argument('--model', action='store', type=str, required=True)
+    parser.add_argument('--technique', action='store', type=int, required=True)
+    parser.add_argument('--verbose', action='store', type=bool, required=False, default=True)
+    parser.add_argument('--seed', action='store', type=int, required=False, default=None)
+    parser.add_argument('--n_outer', action='store', type=int, required=False, default=5)
+    parser.add_argument('--n_inner', action='store', type=int, required=False, default=5)
+    parser.add_argument('--n_repeats', action='store', type=int, required=False, default=1)
+    parser.add_argument('--n_jobs', action='store', type=int, required=False, default=1)
+    parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
+    
+    args = parser.parse_args()
+    
+    # print(args.input)
+    x_path = args.x
+    y_path = args.y
+    groups_path = args.groups
+    verbose = args.verbose
+    seed = args.seed
+    n_inner = args.n_inner
+    n_outer = args.n_outer
+    n_repeats = args.n_repeats
+    n_jobs = args.n_jobs
+    modelname = args.model
+    technique = args.technique
+    outdir = args.outdir
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--x', action='store', type=str, required=True)
-parser.add_argument('--y', action='store', type=str, required=True)
-parser.add_argument('--groups', action='store', type=str, required=True)
-parser.add_argument('--model', action='store', type=str, required=True)
-parser.add_argument('--technique', action='store', type=int, required=True)
-parser.add_argument('--verbose', action='store', type=bool, required=False, default=True)
-parser.add_argument('--seed', action='store', type=int, required=False, default=None)
-parser.add_argument('--n_outer', action='store', type=int, required=False, default=5)
-parser.add_argument('--n_inner', action='store', type=int, required=False, default=5)
-parser.add_argument('--n_repeats', action='store', type=int, required=False, default=1)
-parser.add_argument('--n_jobs', action='store', type=int, required=False, default=1)
-parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
-
-args = parser.parse_args()
-
-# print(args.input)
-x_path = args.x
-y_path = args.y
-groups_path = args.groups
-verbose = args.verbose
-seed = args.seed
-n_inner = args.n_inner
-n_outer = args.n_outer
-n_repeats = args.n_repeats
-n_jobs = args.n_jobs
-modelname = args.model
-technique = args.technique
-outdir = args.outdir
+else:
+    x_path = "multiclass-X.npy"
+    y_path = "multiclass-y.npy"
+    groups_path = "multiclass-patients.npy"
+    verbose = True
+    seed = 260600
+    n_inner = 2
+    n_outer = 2
+    n_repeats = 1
+    n_jobs = -1
+    modelname = "LDA"
+    technique = 0
+    outdir = "results"
 
 np.random.seed(seed)
 random.seed(seed)
@@ -290,7 +304,13 @@ for fold, (par_idxs, val_idxs) in enumerate(outerfold.split(X, y, groups)):
         for i, (train_idxs, test_idxs) in enumerate(innerfold.split(Xpar, ypar)):
             params = format_params(params, ypar[test_idxs])
             pipe.set_params(**params)
-            pipe.fit(Xpar[train_idxs], ypar[train_idxs])
+            for _ in range(10):
+                try:
+                    pipe.fit(Xpar[train_idxs], ypar[train_idxs])
+                    break
+                except:
+                    print("Pipeline error")
+                
             score[i] = balanced_accuracy_score(ypar[test_idxs], pipe.predict(Xpar[test_idxs]), adjusted=False)
         
             if verbose: pbar.update(1)
@@ -315,9 +335,9 @@ if not exists(outdir):
     
 now = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
 prediction_name = 'predictions_{}_{}_{}_{}_{}_{}_{}'.format(modelname, technique, n_repeats, n_outer, n_inner, seed, now) 
-np.save(outdir + '\\' + prediction_name, ypred, allow_pickle=True)
+np.save(outdir + '/' + prediction_name, ypred, allow_pickle=True)
 hyperparameter_name = 'hyperparameters_{}_{}_{}_{}_{}_{}_{}'.format(modelname, technique, n_repeats, n_outer, n_inner, seed, now)
-with open(outdir + '\\' + hyperparameter_name, 'w') as file:
+with open(outdir + '/' + hyperparameter_name + '.pkl', 'wb') as file:
     dump(best_hyperparametes, file)
 #%%
 label_dict = {'chew': 0, 'elpp': 1, 'eyem': 2, 'musc': 3, 'shiv': 4, 'null': 5}
