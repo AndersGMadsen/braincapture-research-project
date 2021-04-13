@@ -8,6 +8,7 @@ from pickle import dump
 from os.path import exists
 from os import makedirs
 import argparse
+import warnings
 
 from sklearn.utils import check_random_state
 from sklearn.utils import resample
@@ -51,6 +52,8 @@ if False:
     parser.add_argument('--n_repeats', action='store', type=int, required=False, default=1)
     parser.add_argument('--n_jobs', action='store', type=int, required=False, default=1)
     parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
+    parser.add_argument('--optimize', action='store', type=int, required=False, default=50)
+    parser.add_argument('--use', action='store', type=float, required=False, default=1)
     
     args = parser.parse_args()
     
@@ -67,6 +70,8 @@ if False:
     modelname = args.model
     technique = args.technique
     outdir = args.outdir
+    use = args.use
+    optimize = args.optimize
 
 else:
     x_path = "multiclass-X.npy"
@@ -81,7 +86,9 @@ else:
     modelname = "LDA"
     technique = 0
     outdir = "results"
-
+    use = 0.1
+    optimize=10
+    
 np.random.seed(seed)
 random.seed(seed)
 # ----------------------------------------------------------------------------
@@ -275,7 +282,7 @@ for i, patient in enumerate(unique_patients):
 #%%
 
 order = np.arange(len(y))
-cut = resample(np.arange(len(y)), n_samples=50000, stratify=y, replace=False)
+cut = resample(np.arange(len(y)), n_samples=int(len(y)*use), stratify=y, replace=False)
 
 X = X[cut]
 y = y[cut]
@@ -286,14 +293,14 @@ groups = groups[cut]
 ypred = np.empty(len(y), dtype=int)
 outerfold = StratifiedGroupKFold(k=n_outer, n_repeats=n_repeats, seed=seed)
 innerfold = StratifiedKFold(n_splits=n_inner)
-if verbose: pbar = tqdm(total=n_repeats*n_inner*n_outer*50)
+if verbose: pbar = tqdm(total=n_repeats*n_inner*n_outer*optimize)
 
 best_hyperparametes = {}
 
 ypred = np.empty((n_repeats, len(y)))
 
 for fold, (par_idxs, val_idxs) in enumerate(outerfold.split(X, y, groups)):
-    if verbose: pbar.set_description('#{} fold'.format(fold // n_outer))
+    if verbose: pbar.set_description('#{} fold'.format(fold % n_outer))
     
     Xpar, ypar = X[par_idxs], y[par_idxs]
     Xval, yval = X[val_idxs], y[val_idxs]
@@ -304,12 +311,19 @@ for fold, (par_idxs, val_idxs) in enumerate(outerfold.split(X, y, groups)):
         for i, (train_idxs, test_idxs) in enumerate(innerfold.split(Xpar, ypar)):
             params = format_params(params, ypar[test_idxs])
             pipe.set_params(**params)
+            
             for _ in range(10):
                 try:
                     pipe.fit(Xpar[train_idxs], ypar[train_idxs])
                     break
                 except:
-                    print("Pipeline error")
+                    pass
+            else:
+                try:
+                    pipe.fit(Xpar[train_idxs], ypar[train_idxs])
+                except Exception as error:
+                    warnings.warn(str(error), RuntimeWarning)
+                    
                 
             score[i] = balanced_accuracy_score(ypar[test_idxs], pipe.predict(Xpar[test_idxs]), adjusted=False)
         
@@ -317,10 +331,10 @@ for fold, (par_idxs, val_idxs) in enumerate(outerfold.split(X, y, groups)):
   
         return -np.mean(score)
     
-    model_opt = forest_minimize(objective, hyperspace, n_calls=50, n_jobs=n_jobs)
+    model_opt = forest_minimize(objective, hyperspace, n_calls=optimize, n_jobs=n_jobs)
 
     params = {param.name : value for param, value in zip(hyperspace, model_opt.x)}
-    best_hyperparametes[fold] = params
+    best_hyperparametes[fold] = deepcopy(params)
     params = format_params(params, ypar)
     
     pipe.set_params(**params)
