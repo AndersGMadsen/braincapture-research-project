@@ -1,6 +1,5 @@
 import numpy as np
 import random
-from tqdm import tqdm
 from copy import deepcopy
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -9,10 +8,13 @@ from os.path import exists
 from os import makedirs
 import argparse
 import warnings
+#warnings.simplefilter("ignore", UserWarning)
+
 from joblib import Parallel, delayed
+import time
 
 from sklearn.utils import check_random_state
-from sklearn.utils import resample
+#from sklearn.utils import resample
 from sklearn.metrics import classification_report, balanced_accuracy_score
 from sklearn.model_selection import StratifiedKFold
 
@@ -39,56 +41,41 @@ from sklearn.linear_model import SGDClassifier
 # ----------------------------------------------------------------------------
 # System argument
 # ----------------------------------------------------------------------------
-if False:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--x', action='store', type=str, required=True)
-    parser.add_argument('--y', action='store', type=str, required=True)
-    parser.add_argument('--groups', action='store', type=str, required=True)
-    parser.add_argument('--model', action='store', type=str, required=True)
-    parser.add_argument('--technique', action='store', type=int, required=True)
-    parser.add_argument('--verbose', action='store', type=bool, required=False, default=True)
-    parser.add_argument('--seed', action='store', type=int, required=False, default=None)
-    parser.add_argument('--n_outer', action='store', type=int, required=False, default=5)
-    parser.add_argument('--n_inner', action='store', type=int, required=False, default=5)
-    parser.add_argument('--n_repeats', action='store', type=int, required=False, default=1)
-    parser.add_argument('--n_jobs', action='store', type=int, required=False, default=1)
-    parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
-    parser.add_argument('--optimize', action='store', type=int, required=False, default=50)
-    
-    args = parser.parse_args()
-    
-    # print(args.input)
-    x_path = args.x
-    y_path = args.y
-    groups_path = args.groups
-    verbose = args.verbose
-    seed = args.seed
-    n_inner = args.n_inner
-    n_outer = args.n_outer
-    n_repeats = args.n_repeats
-    n_jobs = args.n_jobs
-    modelname = args.model
-    technique = args.technique
-    outdir = args.outdir
-    optimize = args.optimize
+parser = argparse.ArgumentParser()
+parser.add_argument('--x', action='store', type=str, required=True)
+parser.add_argument('--y', action='store', type=str, required=True)
+parser.add_argument('--groups', action='store', type=str, required=True)
+parser.add_argument('--model', action='store', type=str, required=True)
+parser.add_argument('--technique', action='store', type=int, required=True)
+parser.add_argument('--verbose', action='store', type=bool, required=False, default=False)
+parser.add_argument('--seed', action='store', type=int, required=False, default=None)
+parser.add_argument('--n_outer', action='store', type=int, required=False, default=5)
+parser.add_argument('--n_inner', action='store', type=int, required=False, default=5)
+parser.add_argument('--n_repeats', action='store', type=int, required=False, default=1)
+parser.add_argument('--n_parallel', action='store', type=int, required=False, default=1)
+parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
+parser.add_argument('--optimize', action='store', type=int, required=False, default=50)
 
-else:
-    x_path = "multiclass-X.npy"
-    y_path = "multiclass-y.npy"
-    groups_path = "multiclass-patients.npy"
-    verbose = False
-    seed = 260600
-    n_inner = 5
-    n_outer = 5
-    n_repeats = 1
-    n_jobs = -1
-    modelname = "LDA"
-    technique = 0
-    outdir = "results"
-    optimize=10
+args = parser.parse_args()
+
+# print(args.input)
+x_path = args.x
+y_path = args.y
+groups_path = args.groups
+verbose = args.verbose
+seed = args.seed
+n_inner = args.n_inner
+n_outer = args.n_outer
+n_repeats = args.n_repeats
+n_parallel = args.n_parallel
+modelname = args.model
+technique = args.technique
+outdir = args.outdir
+optimize = args.optimize
     
 np.random.seed(seed)
 random.seed(seed)
+
 # ----------------------------------------------------------------------------
 # Utility functions
 # ----------------------------------------------------------------------------
@@ -160,7 +147,7 @@ class StratifiedGroupKFold():
                 test_indices = np.where(np.isin(groups, list(test_groups)))[0]
                 
                 # Yields the indices as they are needed
-                yield train_indices, test_indices
+                yield repeat, fold, train_indices, test_indices
                 
 # ----------------------------------------------------------------------------
 # Models
@@ -193,7 +180,7 @@ models = {
     'GNB' : {'model' : ('model', GaussianNB()),
              'space' : [Real(10**(-9), 10**0, prior='log-uniform', name='var_smoothing')]},
     
-    'KNN' : {'model' : ('model', KNeighborsClassifier(n_jobs=n_jobs)),
+    'KNN' : {'model' : ('model', KNeighborsClassifier(n_jobs=1)),
              'space' : [Integer(5, 20, name='n_neighbors'),
                         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
                         Integer(15, 60, name='leaf_size'),
@@ -208,13 +195,13 @@ models = {
                         Categorical(['constant', 'invscaling', 'adaptive'], name='learning_rate')]},
     
     
-    'RFO' : {'model' : ('model', RandomForestClassifier(n_jobs=n_jobs)),
+    'RFO' : {'model' : ('model', RandomForestClassifier(n_jobs=1)),
              'space' : [Integer(100, 1000, name='n_estimators'),
                         Categorical(['sqrt', 'log2'], name='max_features'),
                         Integer(1, 5, name='min_samples_leaf'),
                         Integer(2, 10, name='min_samples_split')]},
     
-    'SGD' : {'model' : ('model', SGDClassifier(n_jobs=n_jobs)),
+    'SGD' : {'model' : ('model', SGDClassifier(n_jobs=1)),
              'space' : [Real(10**(-9), 10**0, prior='log-uniform', name='alpha'),
                         Categorical(['l2', 'l1', 'elasticnet'], name='penalty'),
                         Real(10**(-4), 10**(-2), prior='log-uniform', name='tol'),
@@ -224,11 +211,11 @@ models = {
 samplers = {
     'RandomUnder' : {'sampler' : ('under', RandomUnderSampler()),
                      'space'   : []},
-    'NearMiss'    : {'sampler' : ('under', NearMiss(n_jobs=n_jobs)),
+    'NearMiss'    : {'sampler' : ('under', NearMiss(n_jobs=1)),
                      'space'   : []},
     'RandomOver'  : {'sampler' : ('over', RandomOverSampler(sampling_strategy='not majority')),
                      'space'   : []},
-    'SMOTE'       : {'sampler' : ('over', SMOTE(sampling_strategy='not majority', n_jobs=n_jobs)),
+    'SMOTE'       : {'sampler' : ('over', SMOTE(sampling_strategy='not majority', n_jobs=1)),
                      'space'   : []},
     }
 
@@ -277,17 +264,16 @@ unique_groups = np.arange(len(unique_patients))
 for i, patient in enumerate(unique_patients):
     groups[patients == patient] = i
 
+
 #%%
-ypred = np.empty(len(y), dtype=int)
 outerfold = StratifiedGroupKFold(k=n_outer, n_repeats=n_repeats, seed=seed)
 innerfold = StratifiedKFold(n_splits=n_inner)
-if verbose: pbar = tqdm(total=n_repeats*n_inner*n_outer*optimize)
 
-best_hyperparametes = {}
-
-def train_and_eval(par_idxs, val_idxs):
-    if verbose: pbar.set_description('#{} fold'.format(fold % n_outer))
-    
+def train_and_eval(repeat, fold, par_idxs, val_idxs):
+    if verbose:
+        start = time.time()
+        print("[repeat: {}, fold: {}] Started at {}:{}:{}".format(repeat, fold, *time.localtime(start)[3:6]))
+        
     Xpar, ypar = X[par_idxs], y[par_idxs]
     Xval = X[val_idxs]
     
@@ -298,22 +284,13 @@ def train_and_eval(par_idxs, val_idxs):
             params = format_params(params, ypar[test_idxs])
             pipe.set_params(**params)
             
-            for _ in range(10):
-                try:
-                    pipe.fit(Xpar[train_idxs], ypar[train_idxs])
-                    break
-                except:
-                    pass
-            else:
-                try:
-                    pipe.fit(Xpar[train_idxs], ypar[train_idxs])
-                except Exception as error:
-                    warnings.warn(str(error), RuntimeWarning)
-                    
+            try:
+                pipe.fit(Xpar[train_idxs], ypar[train_idxs])
+                
+            except Exception as error:
+                warnings.warn("Pipeline error: " + str(error))
                 
             score[i] = balanced_accuracy_score(ypar[test_idxs], pipe.predict(Xpar[test_idxs]), adjusted=False)
-        
-            if verbose: pbar.update(1)
   
         return -np.mean(score)
     
@@ -325,17 +302,24 @@ def train_and_eval(par_idxs, val_idxs):
     
     pipe.set_params(**params)
     pipe.fit(Xpar, ypar)
+    prediction = pipe.predict(Xval)
     
-    return (val_idxs, pipe.predict(Xval), best)
+    if verbose: print("[repeat: {}, fold: {}] Finished in {:.2f} minutes".format(repeat, fold, (time.time() - start) / 60))
+    
+    return (repeat, val_idxs, prediction, best)
 
-ypred = np.empty((n_repeats, len(y)), )
+ypred = np.empty((n_repeats, len(y)), dtype=int)
+ypred.fill(-1)
 
-out = Parallel(n_jobs=n_outer*n_repeats, pre_dispatch='auto')(
-    delayed(train_and_eval)(par_idxs, val_idxs) for par_idxs, val_idxs in outerfold.split(X, y, groups))
+best_hyperparametes = []
 
-for fold, (val_idxs, predictions, best) in enumerate(out):
-    ypred[fold // n_outer][val_idxs] = predictions
-    best_hyperparametes[fold] = best
+out = Parallel(n_jobs=n_parallel, verbose=0)(
+    delayed(train_and_eval)(repeat, fold, par_idxs, val_idxs)
+    for repeat, fold, par_idxs, val_idxs in outerfold.split(X, y, groups))
+
+for repeat, val_idxs, predictions, best in out:
+    ypred[repeat][val_idxs] = predictions
+    best_hyperparametes.append(best)
     
 #%%
 
@@ -348,7 +332,15 @@ np.save(outdir + '/' + prediction_name, ypred, allow_pickle=True)
 hyperparameter_name = 'hyperparameters_{}_{}_{}_{}_{}_{}_{}'.format(modelname, technique, n_repeats, n_outer, n_inner, seed, now)
 with open(outdir + '/' + hyperparameter_name + '.pkl', 'wb') as file:
     dump(best_hyperparametes, file)
+    
 #%%
-label_dict = {'chew': 0, 'elpp': 1, 'eyem': 2, 'musc': 3, 'shiv': 4, 'null': 5}
-print(classification_report(np.tile(y, n_repeats), ypred.flatten(), target_names=list(label_dict.keys())))
-print(best_hyperparametes)
+if verbose:
+    label_dict = {'chew': 0, 'elpp': 1, 'eyem': 2, 'musc': 3, 'shiv': 4, 'null': 5}
+    print()
+    print(classification_report(np.tile(y, n_repeats), ypred.flatten(), target_names=list(label_dict.keys())))
+    for key in best_hyperparametes[0].keys():
+        print("{} : ".format(key), end="")
+        if not isinstance(best_hyperparametes[0][key], float):
+            print([best[key] for best in best_hyperparametes])
+        else:
+            print([round(best[key], 3) for best in best_hyperparametes])
