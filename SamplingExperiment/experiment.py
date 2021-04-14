@@ -6,8 +6,10 @@ from datetime import datetime
 from pickle import dump
 from os.path import exists
 from os import makedirs
+import sys
 import argparse
 import warnings
+import os
 #warnings.simplefilter("ignore", UserWarning)
 
 from joblib import Parallel, delayed
@@ -47,7 +49,7 @@ parser.add_argument('--y', action='store', type=str, required=True)
 parser.add_argument('--groups', action='store', type=str, required=True)
 parser.add_argument('--model', action='store', type=str, required=True)
 parser.add_argument('--technique', action='store', type=int, required=True)
-parser.add_argument('--verbose', action='store', type=bool, required=False, default=False)
+parser.add_argument('--verbose', action='store', type=bool, required=False, default=True)
 parser.add_argument('--seed', action='store', type=int, required=False, default=None)
 parser.add_argument('--n_outer', action='store', type=int, required=False, default=5)
 parser.add_argument('--n_inner', action='store', type=int, required=False, default=5)
@@ -55,6 +57,7 @@ parser.add_argument('--n_repeats', action='store', type=int, required=False, def
 parser.add_argument('--n_parallel', action='store', type=int, required=False, default=1)
 parser.add_argument('--outdir', action='store', type=str, required=False, default='results')
 parser.add_argument('--optimize', action='store', type=int, required=False, default=50)
+parser.add_argument('--logging', action='store', type=str, required=False, default='out.out')
 
 args = parser.parse_args()
 
@@ -72,6 +75,7 @@ modelname = args.model
 technique = args.technique
 outdir = args.outdir
 optimize = args.optimize
+logging = args.logging
     
 np.random.seed(seed)
 random.seed(seed)
@@ -272,7 +276,8 @@ innerfold = StratifiedKFold(n_splits=n_inner)
 def train_and_eval(repeat, fold, par_idxs, val_idxs):
     if verbose:
         start = time.time()
-        print("[repeat: {}, fold: {}] Started at {}:{}:{}".format(repeat, fold, *time.localtime(start)[3:6]))
+        with open(logging, "a") as output:
+            output.write("[repeat: {}, fold: {}] Started at {}\n".format(repeat, fold, time.asctime(time.localtime(start))[11:19]))
         
     Xpar, ypar = X[par_idxs], y[par_idxs]
     Xval = X[val_idxs]
@@ -304,7 +309,9 @@ def train_and_eval(repeat, fold, par_idxs, val_idxs):
     pipe.fit(Xpar, ypar)
     prediction = pipe.predict(Xval)
     
-    if verbose: print("[repeat: {}, fold: {}] Finished in {:.2f} minutes".format(repeat, fold, (time.time() - start) / 60))
+    if verbose:
+        with open(logging, "a") as output:
+            output.write("[repeat: {}, fold: {}] Finished in {:.2f} minutes\n".format(repeat, fold, (time.time() - start) / 60))
     
     return (repeat, val_idxs, prediction, best)
 
@@ -313,6 +320,7 @@ ypred.fill(-1)
 
 best_hyperparametes = []
 
+print("Beginning repeated cross-validation.\n")
 out = Parallel(n_jobs=n_parallel, verbose=0)(
     delayed(train_and_eval)(repeat, fold, par_idxs, val_idxs)
     for repeat, fold, par_idxs, val_idxs in outerfold.split(X, y, groups))
