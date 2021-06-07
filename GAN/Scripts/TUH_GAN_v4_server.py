@@ -16,7 +16,7 @@ from keras.layers import Dropout
 from keras.layers import LeakyReLU
 
 import numpy as np
-from random import random
+import random
 from os.path import exists
 from os import makedirs
 
