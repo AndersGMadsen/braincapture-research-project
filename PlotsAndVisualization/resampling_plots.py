@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from imblearn.over_sampling import SMOTE
 from sklearn.decomposition import PCA
 import random
-from imblearn.under_sampling import RandomUnderSampler
+from imblearn.under_sampling import RandomUnderSampler, NearMiss
 
 from sklearn.model_selection import train_test_split
 import matplotlib.patches as mpatches
@@ -132,7 +132,7 @@ markers = ["*", "s", "^", "D", "P"]
 
 seed = 55784899
 np.random.seed(seed)
-idx = np.random.choice(range(len(X_test[y_test == 4])), 6)
+idx = np.random.choice(range(len(X_test[y_test == 4])), 10)
 
 chew = X_test[y_test == 0][idx]
 elpp = X_test[y_test == 1][idx]
@@ -163,6 +163,7 @@ datay = np.array((datay))
 
 #%%
 
+## ORIGINAL DATA
 pca = PCA(n_components=2)
 pca.fit(X_train)
 
@@ -186,10 +187,16 @@ ax.scatter(pc_null[:,pc1], pc_null[:,pc2], c=my_colors[5], label=names[5])
 
 
 for i, artifact in enumerate(pc_original_artifacts):
-    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i])
+    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i], edgecolor=(0,0,0,1))
 
 
 plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+plt.ylim((-14,14))
+plt.xlim((-11,17))
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title(r"\textbf{PCA Plot of Original Data}", size=18, y=1.01)
+plt.savefig("PCA without augmentation", dpi=1000, bbox_inches = 'tight')
 plt.show()
 
 
@@ -198,7 +205,7 @@ plt.show()
 
 ## RANDOM UNDER SAMPLING OF NULL
 
-rus = RandomUnderSampler(random_state=seed)
+rus = RandomUnderSampler(sampling_strategy={5:500}, random_state=seed)
 dataX_res, datay_res = rus.fit_resample(dataX, datay)
 
 
@@ -227,10 +234,17 @@ ax.scatter(pc_null[:,pc1], pc_null[:,pc2], c=my_colors[5], label=names[5])
 
 
 for i, artifact in enumerate(pc_original_artifacts):
-    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i])
+    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i], edgecolor=(0,0,0,1))
 
 
 plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+plt.ylim((-14,14))
+plt.xlim((-11,17))
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title(r"\textbf{Random Majority Down Sampling}", size=18, y=1.01)
+plt.savefig("PCA random under sampling", dpi=1000, bbox_inches = 'tight')
+plt.show()
 plt.show()
 
 
@@ -239,7 +253,7 @@ plt.show()
 
 ## SMOTE
 
-s = 300
+s = 500
 #sampling_strategy={0: s, 1: s, 2: s, 3: s, 4: s}
 smote = SMOTE(sampling_strategy={0: s, 1: s, 2: s, 3: s, 4: s}, random_state=seed)
 dataX_smote, datay_smote = smote.fit_resample(dataX, datay)
@@ -271,11 +285,64 @@ ax.scatter(pc_null[:,pc1], pc_null[:,pc2], c=my_colors[5], label=names[5])
 
 for i, artifact in enumerate(pc_smote_artifacts):
     print(i)
-    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i])
+    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i])
 
 for i, artifact in enumerate(pc_original_artifacts):
-    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], edgecolor=(0,0,0,1))
+    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i], edgecolor=(0,0,0,1))
 
 
 plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+plt.ylim((-14,14))
+plt.xlim((-11,17))
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title(r"\textbf{Minority Up Sampling with SMOTE}", size=18, y=1.01)
+plt.savefig("PCA SMOTE", dpi=1000, bbox_inches = 'tight')
+plt.show()
+
+
+#%%
+
+
+## NEARMISS
+
+nm = NearMiss(sampling_strategy={5: 500})
+dataX_nm, datay_nm = nm.fit_resample(dataX, datay)
+
+
+nm_chew = dataX_nm[datay_nm == 0]
+nm_elpp = dataX_nm[datay_nm == 1]
+nm_eyem = dataX_nm[datay_nm == 2]
+nm_musc = dataX_nm[datay_nm == 3]
+nm_shiv = dataX_nm[datay_nm == 4]
+nm_null = dataX_nm[datay_nm == 5]
+
+nm_artifacts = [nm_chew,nm_elpp, nm_eyem, nm_musc,nm_shiv]
+pc_nm_artifacts = []
+
+pc_null = pca.transform(nm_null)
+
+for artifact in nm_artifacts:
+    pc_nm_artifacts.append(pca.transform(artifact))
+
+pc1 = 0
+pc2 = 1
+
+fig = plt.figure()
+ax = fig.add_axes([0.1, 0.1, 0.6, 0.75])
+
+ax.scatter(pc_null[:,pc1], pc_null[:,pc2], c=my_colors[5], label=names[5])
+
+
+for i, artifact in enumerate(pc_nm_artifacts):
+    ax.scatter(artifact[:,pc1], artifact[:,pc2], color=my_colors[i], marker=markers[i], label=names[i], edgecolor=(0,0,0,1))
+
+
+plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+plt.ylim((-14,14))
+plt.xlim((-11,17))
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title(r"\textbf{Majority Down Sampling with NearMiss}", size=18, y=1.01)
+plt.savefig("PCA NearMiss", dpi=1000, bbox_inches = 'tight')
 plt.show()
