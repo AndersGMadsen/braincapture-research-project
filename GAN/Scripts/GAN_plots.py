@@ -1,13 +1,30 @@
 import numpy as np
 from matplotlib import pyplot
+import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 import matplotlib.patches as mpatches
 
-# FONTS FOR PYPLOT
-pyplot.rcParams['font.sans-serif'] = "Georgia"
-pyplot.rcParams['font.family'] = "sans-serif"
+# SETTINGS FOR PYPLOT
+plt.rc('text', usetex=True)
 
+font = {'family': 'serif',
+
+        'size': '20',
+
+        'serif': ['Computer Modern'],
+
+        'sans-serif': ['Computer Modern']}
+
+plt.rc('font', **font)
+
+plt.rc('axes', titlesize=28, labelsize=22)
+
+plt.rc('xtick', labelsize=16)
+
+plt.rc('ytick', labelsize=16)
+
+plt.rc('legend', fontsize=16)
 
 ## LOADING REAL DATA
 X = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_artifacts_only.npy')
@@ -21,23 +38,23 @@ X_test = X_test.reshape(len(X_test), 19*25)
 
 ## LOADING FAKE IMAGES ##
 
-fake_chew = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_chew_300.npy')
+fake_chew = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_chew_700.npy')
 fake_chew = 10.0 * fake_chew - 5
 fake_chew = fake_chew[:, :19, :25]
 
-fake_elpp = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_elpp_200.npy')
+fake_elpp = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_elpp_700.npy')
 fake_elpp = 10.0 * fake_elpp - 5
 fake_elpp = fake_elpp[:, :19, :25]
 
-fake_eyem = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_eyem_110.npy')
+fake_eyem = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_eyem_200.npy')
 fake_eyem = 10.0 * fake_eyem - 5
 fake_eyem = fake_eyem[:, :19, :25]
 
-fake_musc = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_musc_170.npy')
+fake_musc = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_musc_400.npy')
 fake_musc = 10.0 * fake_musc - 5
 fake_musc = fake_musc[:, :19, :25]
 
-fake_shiv = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_shiv_580.npy')
+fake_shiv = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_shiv_900.npy')
 fake_shiv = 10.0 * fake_shiv - 5
 fake_shiv = fake_shiv[:, :19, :25]
 
@@ -89,13 +106,14 @@ artifact_names = ['Chewing', 'Electrode Pop', 'Eye Movement', 'Muscle', 'Shiveri
 
 #my_colors = ["#f7da65", "#ec656c", "#3fdc99", "#fd8f50", "#ab74b8", "#828bf2"]
 my_colors = ["#f5cf40", "#e63f47", "#0ed280", "#fc7323", "#79218f", "#828bf2"]
+markers = ["*", "s", "^", "D", "P"]
 
 chew_patch = mpatches.Patch(color=my_colors[0], label=names[0])
 elpp_patch = mpatches.Patch(color=my_colors[1],label=names[1])
 eyem_patch = mpatches.Patch(color=my_colors[2], label=names[2])
 musc_patch = mpatches.Patch(color=my_colors[3], label=names[3])
 shiv_patch = mpatches.Patch(color=my_colors[4], label=names[4])
-X_patch = mpatches.Patch(color='blue', label='Real test data')
+X_patch = mpatches.Patch(color=my_colors[5], label='Real test data')
 
 pca = PCA(n_components=5)
 pca.fit(X_train)
@@ -118,40 +136,53 @@ pc2 = 1
 fig = pyplot.figure()
 ax = fig.add_axes([0.1, 0.1, 0.6, 0.75])
 
-ax.scatter(pc_X_test[:,pc1], pc_X_test[:,pc2], c="#828bf2")
+#ax.scatter(pc_X_test[:,pc1], pc_X_test[:,pc2], c="#828bf2")
 
 for i, pc_real_artifact in enumerate(pc_real_artifacts):
-    ax.scatter(pc_real_artifact[:,pc1], pc_real_artifact[:,pc2],color=my_colors[i])
+    ax.scatter(pc_real_artifact[:,pc1], pc_real_artifact[:,pc2],color=my_colors[i], marker= markers[i], label=names[i])
 
-ax.legend(handles=[chew_patch, elpp_patch, eyem_patch, musc_patch, shiv_patch, X_patch],
-           bbox_to_anchor=(1.05, 1.0), loc='upper left')
-pyplot.title("PCA Plot of Real Artifact Data", size=18)
+pyplot.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+pyplot.title(r"\textbf{PCA Plot of Real Artifact Data}", size=18, y=1.01)
+pyplot.savefig("PCA Real artifacts", dpi=1000, bbox_inches = 'tight')
 pyplot.show()
 
 # PC PLOT FOR FAKE DATA
 fig = pyplot.figure()
 ax = fig.add_axes([0.1, 0.1, 0.6, 0.75])
 
-ax.scatter(pc_X_test[:,pc1], pc_X_test[:,pc2], c="#828bf2")
+ax.scatter(pc_X_test[:,pc1], pc_X_test[:,pc2], c="#828bf2", label="Real test data")
 
 for i, pc_fake_artifact in enumerate(pc_fake_artifacts):
-    ax.scatter(pc_fake_artifact[:,pc1], pc_fake_artifact[:,pc2],color=my_colors[i])
+    idx = np.random.choice(range(20000), 500)
+    ax.scatter(pc_fake_artifact[:,pc1][idx], pc_fake_artifact[:,pc2][idx],color=my_colors[i], marker= markers[i], label=names[i])
 
-ax.legend(handles=[chew_patch, elpp_patch, eyem_patch, musc_patch, shiv_patch, X_patch],
-           bbox_to_anchor=(1.05, 1.0), loc='upper left')
-pyplot.title("PCA Plot of Fake Artifact Data", size=18)
+#ax.legend(handles=[chew_patch, elpp_patch, eyem_patch, musc_patch, shiv_patch, X_patch],
+ #          bbox_to_anchor=(1.05, 1.0), loc='upper left')
+
+pyplot.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+pyplot.title(r"\textbf{PCA Plot of Fake Artifact Data}", size=18, y=1.01)
+pyplot.savefig("PCA Fake artifacts", dpi=1000, bbox_inches = 'tight')
 pyplot.show()
 
+
 #%%
+#import seaborn as sns
+#sns.set_style("whitegrid")
+plt.rc('axes', titlesize=18, labelsize=22)
 fig, ax = pyplot.subplots(2, 3, sharey=True)
 fig.tight_layout()
 
 for i in range(5):
-    ax[i % 2, i % 3].scatter(pc_real_artifacts[i][:,pc1], pc_real_artifacts[i][:,pc2],color='blue')
-    ax[i % 2, i % 3].scatter(pc_fake_artifacts[i][:,pc1], pc_fake_artifacts[i][:,pc2],color='red')
+    idx = np.random.choice(range(20000), 500)
+    ax[i % 2, i % 3].scatter(pc_real_artifacts[i][:,pc1], pc_real_artifacts[i][:,pc2],color='k')
+    ax[i % 2, i % 3].scatter(pc_fake_artifacts[i][:,pc1][idx], pc_fake_artifacts[i][:,pc2][idx],color=my_colors[i], marker=markers[i], label=names[i])
     ax[i % 2, i % 3].set_title(artifact_names[i])
 
 
+fig.suptitle(r"\textbf{PCA Plot of Fake Data on Real Data}", size=20, y=1.04)
+#fig.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+fig.delaxes(ax[1, 2])
+pyplot.savefig("PCA Fake and Real", dpi=1000, bbox_inches = 'tight')
 pyplot.show()
 
 #%%

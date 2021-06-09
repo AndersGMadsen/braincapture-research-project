@@ -48,15 +48,14 @@ def generate_latent_points(latent_dim, n_samples):
 
 latent_dim=10
 g_model = define_generator(latent_dim)
-path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/generator_models/4_generator_model_weights_580.h5'
+path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/generator_models/4_generator_model_900.h5'
 g_model.load_weights(path)
 
-# model = load_model('generator_models/1_generator_model_200.h5')
 # generate images
 n_images = 20000
 latent_points = generate_latent_points(10, n_images)
 # generate images
 X = g_model.predict(latent_points)
-np.save('fake_shiv_580', X)
+np.save('fake_shiv_900', X)
 
 #save_plot(X, 300, int(np.sqrt(n_images)))
