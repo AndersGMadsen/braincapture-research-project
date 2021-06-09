@@ -171,7 +171,10 @@ class StratifiedGroupKFold():
 
                 train_indices = np.where(np.isin(groups, list(train_groups)))[0]
                 test_indices = np.where(np.isin(groups, list(test_groups)))[0]
-
+                
+                np.random.shuffle(train_indices)
+                np.random.shuffle(test_indices)
+                
                 # Yields the indices as they are needed
                 yield repeat, fold, train_indices, test_indices
 
@@ -281,25 +284,12 @@ X = X.reshape(-1, np.product(X.shape[1:]))
 y = np.load(y_path)
 num_classes = len(np.unique(y))
 
-patients = np.load(groups_path, allow_pickle=True)
-groups = np.empty(len(patients), dtype=int)
-# %%
-if downsample != -1.0:
-    mask = resample(np.arange(len(y)), replace=False, n_samples=int(len(y) * downsample), stratify=y)
-    X = X[mask]
-    y = y[mask]
-    patients = patients[mask]
-    groups = groups[mask]
-
-unique_patients = np.unique(patients)
-unique_groups = np.arange(len(unique_patients))
-for i, patient in enumerate(unique_patients):
-    groups[patients == patient] = i
+groups = np.load(groups_path, allow_pickle=True)
+unique_groups = np.unique(groups)
 
 # %%
 outerfold = StratifiedGroupKFold(k=n_outer, n_repeats=n_repeats, seed=seed)
 innerfold = StratifiedKFold(n_splits=n_inner)
-
 
 def train_and_eval(repeat, fold, par_idxs, val_idxs):
     if verbose:
