@@ -34,6 +34,6 @@ raw = mne.io.read_raw_edf(sample_data_raw_file)
 
 #raw.plot_psd(fmax=50)
 
-fig = raw.plot(duration=5, start=200, n_channels=10, color='b')
+fig = raw.plot(duration=5, start=200, n_channels=19, color='b')
 fig.suptitle(r"\textbf{Raw EEG Waves}", size=48, y=1.04)
 fig.savefig("Raw EEG waves", dpi=1000, bbox_inches = 'tight')

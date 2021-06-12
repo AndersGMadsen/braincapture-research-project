@@ -2,19 +2,15 @@ from collections import defaultdict, Counter
 
 import numpy as np
 import random
+
+from imblearn.over_sampling import SMOTE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.utils import check_random_state, resample
-from sklearn.metrics import fbeta_score
+from sklearn.metrics import fbeta_score, balanced_accuracy_score, classification_report
 
-paths = {
-'chew': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_chew_700.npy',
-'elpp': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_elpp_700.npy',
-'eyem': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_eyem_200.npy',
-'musc': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_musc_400.npy',
-'shiv': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_shiv_900.npy'
-}
 
-artifact_names = paths.keys()
+artifact_names = ['chew', 'elpp', 'eyem', 'musc', 'shiv']
+names = ['chew', 'elpp', 'eyem', 'musc', 'shiv', 'null']
 
 seed = 55784899
 np.random.seed(seed)
@@ -92,8 +88,8 @@ class StratifiedGroupKFold():
 
 
 def load_data():
-    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X.npy'
-    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y.npy'
+    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/multiclass_X_new.npy'
+    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/multiclass_y_new.npy'
     groups_path = "/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/patients.npy"
 
     X = np.load(X_path).reshape(1386103, 19, 25)
@@ -110,7 +106,16 @@ def load_data():
     return (X_train, y_train), (X_test, y_test)
 
 
-def load_fake_data():
+def load_GAN_data():
+    paths = {
+        'chew': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_chew_700.npy',
+        'elpp': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_elpp_700.npy',
+        'eyem': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_eyem_200.npy',
+        'musc': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_musc_400.npy',
+        'shiv': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_shiv_900.npy'
+    }
+
+    artifact_names = paths.keys()
 
     X_fake = []
     y_fake = []
@@ -136,63 +141,148 @@ def load_fake_data():
     return X_fake, y_fake
 
 
+def load_mixup_data():
+    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_mixup_train_stratified.npy'
+    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified.npy'
+
+    X_mixup = np.load(X_path)
+    y_mixup = np.load(y_path)
+
+    return (X_mixup, y_mixup)
+
+
 def get_data():
 
     (X_train, y_train), (X_test, y_test) = load_data()
-    (X_fake, y_fake) = load_fake_data()
+    (X_GAN, y_GAN) = load_GAN_data()
+    (X_mixup, y_mixup) = load_mixup_data()
 
-    X_fake = np.reshape(X_fake, (100000, 19, 25))
+    X_GAN = np.reshape(X_GAN, (100000, 19, 25))
+    X_mixup = np.reshape(X_mixup, (53050, 19, 25))
 
-    mask = resample(np.where(y_train == 5)[0], replace=False, n_samples=1043702 - 26000)
+    n_under = 30000
+
+    mask = resample(np.where(y_train == 5)[0], replace=False, n_samples=1043702 - 50000)
 
     X_train = np.delete(X_train, mask, axis=0)
     y_train = np.delete(y_train, mask, axis=0)
 
-    X_train_up = X_train.copy()
-    y_train_up = y_train.copy()
+    X_train_SMOTE = X_train.copy()
+    y_train_SMOTE = y_train.copy()
+
+    X_train_GAN = X_train.copy()
+    y_train_GAN = y_train.copy()
+
+    X_train_mixup = X_train.copy()
+    y_train_mixup = y_train.copy()
+
+    s = n_under
+    smote = SMOTE(sampling_strategy={0: s, 1: s, 2: s, 3: s, 4: s}, random_state=seed)
+    X_train_SMOTE, y_train_SMOTE = smote.fit_resample(X_train_SMOTE.reshape(-1, 19*25), y_train_SMOTE)
+
+    shuffler_SMOTE = np.random.permutation(len(X_train_SMOTE))
+    X_train_SMOTE = X_train_SMOTE[shuffler_SMOTE]
+    y_train_SMOTE = y_train_SMOTE[shuffler_SMOTE]
 
     for i, artifact in enumerate(range(len(artifact_names))):
-        idx = np.random.choice(np.where(y_fake == i)[0], 26000 - len(X_train[y_train==i]))
+        idx_GAN = np.random.choice(np.where(y_GAN == i)[0], n_under - len(X_train[y_train == i]))
+        idx_mixup = np.random.choice(np.where(y_mixup == i)[0], n_under - len(X_train[y_train == i]))
 
-        X_train_up = np.concatenate((X_train_up, X_fake[idx]))
-        y_train_up = np.concatenate((y_train_up, y_fake[idx]))
+        X_train_GAN = np.concatenate((X_train_GAN, X_GAN[idx_GAN]))
+        y_train_GAN = np.concatenate((y_train_GAN, y_GAN[idx_GAN]))
 
-    shuffler = np.random.permutation(len(X_train_up))
-    X_train_up = X_train_up[shuffler]
-    y_train_up = y_train_up[shuffler]
+        X_train_mixup = np.concatenate((X_train_mixup, X_mixup[idx_mixup]))
+        y_train_mixup = np.concatenate((y_train_mixup, y_mixup[idx_mixup]))
 
-    return (X_train, y_train), (X_train_up, y_train_up), (X_test, y_test)
+    shuffler_GAN = np.random.permutation(len(X_train_GAN))
+    X_train_GAN = X_train_GAN[shuffler_GAN]
+    y_train_GAN = y_train_GAN[shuffler_GAN]
+
+    shuffler_mixup = np.random.permutation(len(X_train_mixup))
+    X_train_mixup = X_train_mixup[shuffler_mixup]
+    y_train_mixup = y_train_mixup[shuffler_mixup]
+
+    return (X_train, y_train), (X_train_SMOTE, y_train_SMOTE), (X_train_GAN, y_train_GAN), (X_train_mixup, y_train_mixup), (X_test, y_test)
 
 
 def run_experiment():
 
-    (X_train, y_train), (X_train_up, y_train_up), (X_test, y_test) = get_data()
+    (X_train, y_train), (X_train_SMOTE, y_train_SMOTE), (X_train_GAN, y_train_GAN), (X_train_mixup, y_train_mixup), (X_test, y_test) = get_data()
 
     X_train = X_train.reshape(-1, 19 * 25)
-    X_train_up = X_train_up.reshape(-1, 19 * 25)
+    X_train_SMOTE = X_train_SMOTE.reshape(-1, 19 * 25)
+    X_train_GAN = X_train_GAN.reshape(-1, 19 * 25)
+    X_train_mixup = X_train_mixup.reshape(-1, 19 * 25)
     X_test = X_test.reshape(-1, 19 * 25)
 
     LDA = LinearDiscriminantAnalysis()
     LDA.fit(X_train, y_train)
 
-    LDA_balanced = LinearDiscriminantAnalysis()
-    LDA_balanced.fit(X_train_up, y_train_up)
+    LDA_SMOTE = LinearDiscriminantAnalysis()
+    LDA_SMOTE.fit(X_train_SMOTE, y_train_SMOTE)
 
-    baseline_accuracy = LDA.score(X_test, y_test)
-    GAN_accuracy = LDA_balanced.score(X_test, y_test)
+    LDA_GAN = LinearDiscriminantAnalysis()
+    LDA_GAN.fit(X_train_GAN, y_train_GAN)
+
+    LDA_mixup = LinearDiscriminantAnalysis()
+    LDA_mixup.fit(X_train_mixup, y_train_mixup)
 
     baseline_pred = LDA.predict(X_test)
-    GAN_pred = LDA_balanced.predict(X_test)
+    SMOTE_pred = LDA_SMOTE.predict(X_test)
+    GAN_pred = LDA_GAN.predict(X_test)
+    mixup_pred = LDA_mixup.predict(X_test)
 
-    baseline_fbeta = fbeta_score(y_test, baseline_pred, average='weighted', beta=2)
-    GAN_fbeta = fbeta_score(y_test, GAN_pred, average='weighted', beta=2)
+    baseline_bacc = balanced_accuracy_score(y_test, baseline_pred)
+    SMOTE_bacc = balanced_accuracy_score(y_test, SMOTE_pred)
+    GAN_bacc = balanced_accuracy_score(y_test, GAN_pred)
+    mixup_bacc = balanced_accuracy_score(y_test, mixup_pred)
 
-    return [baseline_accuracy, baseline_fbeta, GAN_accuracy, GAN_fbeta]
+    baseline_f1 = fbeta_score(y_test, baseline_pred, average='weighted', beta=1)
+    SMOTE_f1 = fbeta_score(y_test, SMOTE_pred, average='weighted', beta=1)
+    GAN_f1 = fbeta_score(y_test, GAN_pred, average='weighted', beta=1)
+    mixup_f1 = fbeta_score(y_test, mixup_pred, average='weighted', beta=1)
+
+    baseline_f2 = fbeta_score(y_test, baseline_pred, average='weighted', beta=2)
+    SMOTE_f2 = fbeta_score(y_test, SMOTE_pred, average='weighted', beta=2)
+    GAN_f2 = fbeta_score(y_test, GAN_pred, average='weighted', beta=2)
+    mixup_f2 = fbeta_score(y_test, mixup_pred, average='weighted', beta=2)
+
+    baseline_report = classification_report(y_test, baseline_pred, target_names=names)
+    SMOTE_report = classification_report(y_test, SMOTE_pred, target_names=names)
+    GAN_report = classification_report(y_test, GAN_pred, target_names=names)
+    mixup_report = classification_report(y_test, mixup_pred, target_names=names)
+
+    results = [baseline_bacc, baseline_f1, baseline_f2, baseline_report,
+               SMOTE_bacc, SMOTE_f1, SMOTE_f2, SMOTE_report,
+               GAN_bacc, GAN_f1, GAN_f2, GAN_report,
+               mixup_bacc, mixup_f1, mixup_f2, mixup_report]
+
+    return results
 
 
 results = run_experiment()
 
-print('Random under, acc.:', results[0])
-print('Random under, f-beta.:', results[1])
-print('Random under + GAN up, acc.:', results[2])
-print('Random under + GAN up, f-beta.:', results[3])
+#%%
+print('Random under, b. acc.:', results[0])
+print('Random under, f1:', results[1])
+print('Random under, f2:', results[2])
+print('Random under, report:')
+print(results[3])
+print()
+print('Random under + SMOTE, b. acc.:', results[4])
+print('Random under + SMOTE, f1:', results[5])
+print('Random under + SMOTE, f2:', results[6])
+print('Random under + SMOTE, report:')
+print(results[7])
+print()
+print('Random under + GAN, b. acc.:', results[8])
+print('Random under + GAN, f1:', results[9])
+print('Random under + GAN, f2:', results[10])
+print('Random under + GAN, report:')
+print(results[11])
+print()
+print('Random under + mixup, b. acc.:', results[12])
+print('Random under + mixup, f1:', results[13])
+print('Random under + mixup, f2:', results[14])
+print('Random under + mixup, report:')
+print(results[15])
