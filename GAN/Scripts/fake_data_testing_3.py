@@ -285,6 +285,8 @@ import numpy as np
 
 plt.rc('text', usetex=True)
 
+
+
 #accs = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/test_f2_matrix_soft.npy')
 
 
