@@ -11,10 +11,13 @@ from keras.layers import Dropout
 from keras.layers import LeakyReLU
 
 import numpy as np
-from sklearn.metrics import fbeta_score
+from sklearn.metrics import fbeta_score, classification_report, balanced_accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.utils import check_random_state
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.utils import check_random_state, resample
 
 paths = {
 'chew': '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/fake images/fake_chew_700.npy',
@@ -25,6 +28,7 @@ paths = {
 }
 
 artifact_names = paths.keys()
+names = ['chew', 'elpp', 'eyem', 'musc', 'shiv', 'null']
 
 class StratifiedGroupKFold():
 
@@ -111,8 +115,16 @@ def define_discriminator(in_shape=(19, 25, 1)):
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
     return model
 
+def softmax(z):
+    assert len(z.shape) == 2
+    s = np.max(z, axis=1)
+    s = s[:, np.newaxis] # necessary step to do broadcasting
+    e_x = np.exp(z - s)
+    div = np.sum(e_x, axis=1)
+    div = div[:, np.newaxis] # dito
+    return e_x / div
 
-def get_fake_images():
+def load_GAN_data():
 
     X_fake = []
     y_fake = []
@@ -137,40 +149,74 @@ def get_fake_images():
 
     return X_fake, y_fake
 
+def load_mixup_data():
+
+    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_mixup_train_stratified.npy'
+    y_soft_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_soft.npy'
+    y_hard_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_hard.npy'
+
+    X_mixup = np.load(X_path)
+    y_mixup_soft = np.load(y_soft_path)
+    y_mixup_hard = np.load(y_hard_path)
+
+    return (X_mixup, y_mixup_soft, y_mixup_hard)
 
 def run(n_real, n_fake, X_real, X_test, y_real, y_test):
 
-    X_fake, y_fake = get_fake_images()
+    soft = False
+    #X_fake, y_fake = load_GAN_data()
+    (X_mixup, y_mixup_soft, y_mixup_hard) = load_mixup_data()
+    X_fake, y_fake = (X_mixup, y_mixup_hard)
+
+
+    mask = resample(np.where(y_real == 5)[0], replace=False, n_samples=1043702 - 26000)
+    X_real = np.delete(X_real, mask, axis=0)
+    y_real = np.delete(y_real, mask, axis=0)
+
+    if soft:
+        X_fake, y_fake = (X_mixup, y_mixup_soft)
+
+        ohe = OneHotEncoder()
+        ohe.fit([[0], [1], [2], [3], [4], [5]])
+        y_real = ohe.transform(y_real.reshape(-1, 1)).toarray()
 
     idx_real = np.random.choice(range(len(X_real)), n_real)
     idx_fake = np.random.choice(range(len(X_fake)), n_fake)
 
-    X_train = np.concatenate((X_real[idx_real], X_fake[idx_fake]))
+    X_train = np.concatenate((X_real[idx_real].reshape(-1, 19*25), X_fake[idx_fake]))
     y_train = np.concatenate((y_real[idx_real], y_fake[idx_fake]))
 
     shuffler = np.random.permutation(len(X_train))
     X_train = X_train[shuffler]
     y_train = y_train[shuffler]
 
-    '''d_model = define_discriminator()
-    d_model.fit(X_train, y_train, epochs=10, verbose=False)'''
 
     X_train = X_train.reshape(-1, 19 * 25)
     X_test = X_test.reshape(-1, 19 * 25)
 
     LDA = LinearDiscriminantAnalysis()
-    LDA.fit(X_train, y_train)
+    MLP = MLPClassifier()
+    MLPreg = MLPRegressor()
 
-    y_pred = LDA.predict(X_test)
+    model = LDA
+    model.fit(X_train, y_train)
+
+
+    y_pred = model.predict(X_test)
+
+    if soft:
+        y_pred = softmax(y_pred)
+        y_pred = np.argmax(y_pred, axis=1)
 
     fbeta = fbeta_score(y_test, y_pred, average='weighted', beta=2)
-
+    bacc = balanced_accuracy_score(y_test, y_pred)
+    #report = classification_report(y_test, y_pred, target_names=names)
     return fbeta
 
 
 
-X = np.load('/Data/X_artifacts_only.npy')
-y = np.load('/Data/y_artifacts_only.npy')
+X = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_artifacts_only.npy')
+y = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_artifacts_only.npy')
 
 
 ns = [ [10, 10]    ,       [0, 100],   [0, 500],    [0, 1000], [0, 5000],     [0, 10000],     [0, 50000],
@@ -185,42 +231,63 @@ ns = [ [10, 10]    ,       [0, 100],   [0, 500],    [0, 1000], [0, 5000],     [0
 
 accs = np.zeros((7, 7))
 
+def load_data():
+    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/multiclass_X_new.npy'
+    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/multiclass_y_new.npy'
+    groups_path = "/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/multiclass_patients_new.npy"
+
+    X = np.load(X_path).reshape(1386103, 19, 25)
+    y = np.load(y_path)
+
+    groups = np.load(groups_path, allow_pickle=True)
+    unique_groups = np.unique(groups)
+
+    _, _, train_idx, test_idx = list(StratifiedGroupKFold(k=5, n_repeats=1, seed=55784899).split(X, y, groups))[0]
+
+    X_train, y_train = X[train_idx], y[train_idx]
+    X_test, y_test = X[test_idx], y[test_idx]
+
+    X_train = X_train.reshape(len(X_train), 19, 25, 1)
+    X_test = X_test.reshape(len(X_test), 19, 25, 1)
+
+    return (X_train, y_train), (X_test, y_test)
+
+(X_train, y_train), (X_test, y_test) = load_data()
+
+from tqdm import tqdm
+
 for i, n in enumerate(ns):
     n_real, n_fake = n[0], n[1]
 
     scores = []
 
-    for train, test in StratifiedKFold(n_splits=5, shuffle=True, random_state=None).split(X, y):
+    '''for train, test in StratifiedKFold(n_splits=5, shuffle=True, random_state=None).split(X, y):
         X_train = X[train[0]: train[-1]]
         X_test = X[test[0]: test[-1]]
         y_train = y[train[0]: train[-1]]
         y_test = y[test[0]: test[-1]]
 
         X_train = X_train.reshape(len(X_train), 19, 25, 1)
-        X_test = X_test.reshape(len(X_test), 19, 25, 1)
+        X_test = X_test.reshape(len(X_test), 19, 25, 1)'''
 
+    print(n_real, n_fake)
+    for j in tqdm(range(1)):
         accuracy = run(n_real, n_fake, X_train, X_test, y_train, y_test)
         scores.append(accuracy)
 
-        accuracy = sum(scores) / len(scores)
-
-    accs[i%7][i//7] = accuracy
-
-
-    print()
-    print('n_real:', n_real, ', n_fake:', n_fake, ', score:', accuracy)
-    #if n_real != 2:
-     #   accuracies[str(n_real)][str(n_fake)] = accuracy
-
+    acc = sum(scores) / len(scores)
+    accs[i % 7][i // 7] = round(acc, 2)
 
 #%%
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 plt.rc('text', usetex=True)
 
-accs[0][1] = 0.34
+#accs = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/test_f2_matrix_soft.npy')
 
+accs[0][1] = 0.28
 font = {'family': 'serif',
 
         'size': '20',
@@ -240,15 +307,14 @@ plt.rc('ytick', labelsize=16)
 plt.rc('legend', fontsize=16)
 
 
-labels = [0, 100, 500, 1000, 5000, 10000, 50000]
+labels = [10, 100, 500, 1000, 5000, 10000, 50000]
 
+ax = sns.heatmap(accs, linewidth=0.5, robust=True,  yticklabels=labels, xticklabels=labels, annot=True, vmin=.25, vmax=.7)
 
-import seaborn as sns
-ax = sns.heatmap(accs, linewidth=0.5, yticklabels=labels, xticklabels=labels, annot=True)
-plt.title(r'f2 Score')
-plt.xlabel('Number of Original Images')
-plt.ylabel('Number of Generated Images')
-plt.savefig("GAN matrix", dpi=1000, bbox_inches = 'tight')
+plt.title(r'Mixup (Hard), MLP: F$_2$ Scores', size=28, y=1.01)
+plt.xlabel('Number of Original Samples')
+plt.ylabel('Number of Generated Samples')
+plt.savefig("Mixup hard MLP F2", dpi=1000, bbox_inches = 'tight')
 plt.show()
 
 
