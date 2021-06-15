@@ -164,9 +164,9 @@ def load_mixup_data():
 def run(n_real, n_fake, X_real, X_test, y_real, y_test):
 
     soft = False
-    #X_fake, y_fake = load_GAN_data()
-    (X_mixup, y_mixup_soft, y_mixup_hard) = load_mixup_data()
-    X_fake, y_fake = (X_mixup, y_mixup_hard)
+    X_fake, y_fake = load_GAN_data()
+    #(X_mixup, y_mixup_soft, y_mixup_hard) = load_mixup_data()
+    #X_fake, y_fake = (X_mixup, y_mixup_soft)
 
 
     mask = resample(np.where(y_real == 5)[0], replace=False, n_samples=1043702 - 26000)
@@ -183,7 +183,7 @@ def run(n_real, n_fake, X_real, X_test, y_real, y_test):
     idx_real = np.random.choice(range(len(X_real)), n_real)
     idx_fake = np.random.choice(range(len(X_fake)), n_fake)
 
-    X_train = np.concatenate((X_real[idx_real].reshape(-1, 19*25), X_fake[idx_fake]))
+    X_train = np.concatenate((X_real[idx_real], X_fake[idx_fake]))
     y_train = np.concatenate((y_real[idx_real], y_fake[idx_fake]))
 
     shuffler = np.random.permutation(len(X_train))
@@ -211,7 +211,7 @@ def run(n_real, n_fake, X_real, X_test, y_real, y_test):
     fbeta = fbeta_score(y_test, y_pred, average='weighted', beta=2)
     bacc = balanced_accuracy_score(y_test, y_pred)
     #report = classification_report(y_test, y_pred, target_names=names)
-    return fbeta
+    return bacc
 
 
 
@@ -219,13 +219,13 @@ X = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X
 y = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_artifacts_only.npy')
 
 
-ns = [ [10, 10]    ,       [0, 100],   [0, 500],    [0, 1000], [0, 5000],     [0, 10000],     [0, 50000],
-      [100, 0],   [100, 100], [100, 500],   [100, 1000], [100, 5000],   [100, 10000],   [100, 50000],
-      [500, 0],   [500, 100],  [500, 500],  [500, 1000], [500, 5000],   [500, 10000],   [500, 50000],
-      [1000, 0],  [1000, 100],  [1000, 500], [1000, 1000], [1000, 5000],  [1000, 10000],  [1000, 50000],
-      [5000, 0],  [5000, 100],  [5000, 500], [5000, 1000],  [5000, 5000], [5000, 10000],  [5000, 50000],
-      [10000, 0], [10000, 100], [10000, 500], [10000, 1000], [10000, 5000], [10000, 10000], [10000, 50000],
-      [50000, 0], [50000, 100], [50000, 500], [50000, 1000], [50000, 5000], [50000, 10000], [50000, 50000]]
+ns = [ [10, 10]    ,       [10, 100],   [10, 500],    [10, 1000], [10, 5000],     [10, 10000],     [10, 50000],
+      [100, 10],   [100, 100], [100, 500],   [100, 1000], [100, 5000],   [100, 10000],   [100, 50000],
+      [500, 10],   [500, 100],  [500, 500],  [500, 1000], [500, 5000],   [500, 10000],   [500, 50000],
+      [1000, 10],  [1000, 100],  [1000, 500], [1000, 1000], [1000, 5000],  [1000, 10000],  [1000, 50000],
+      [5000, 10],  [5000, 100],  [5000, 500], [5000, 1000],  [5000, 5000], [5000, 10000],  [5000, 50000],
+      [10000, 10], [10000, 100], [10000, 500], [10000, 1000], [10000, 5000], [10000, 10000], [10000, 50000],
+      [50000, 10], [50000, 100], [50000, 500], [50000, 1000], [50000, 5000], [50000, 10000], [50000, 50000]]
 
 #accuracies = pd.DataFrame(index = ['0', '100', '1000', '10000', '50000'], columns = ['0', '100', '1000', '10000', '50000'])
 
@@ -271,7 +271,7 @@ for i, n in enumerate(ns):
         X_test = X_test.reshape(len(X_test), 19, 25, 1)'''
 
     print(n_real, n_fake)
-    for j in tqdm(range(1)):
+    for j in tqdm(range(5)):
         accuracy = run(n_real, n_fake, X_train, X_test, y_train, y_test)
         scores.append(accuracy)
 
@@ -287,7 +287,7 @@ plt.rc('text', usetex=True)
 
 #accs = np.load('/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/test_f2_matrix_soft.npy')
 
-accs[0][1] = 0.28
+
 font = {'family': 'serif',
 
         'size': '20',
@@ -309,12 +309,12 @@ plt.rc('legend', fontsize=16)
 
 labels = [10, 100, 500, 1000, 5000, 10000, 50000]
 
-ax = sns.heatmap(accs, linewidth=0.5, robust=True,  yticklabels=labels, xticklabels=labels, annot=True, vmin=.25, vmax=.7)
+ax = sns.heatmap(accs, linewidth=0.5, robust=True,  yticklabels=labels, xticklabels=labels, annot=True, vmin=.2, vmax=.35)
 
-plt.title(r'Mixup (Hard), MLP: F$_2$ Scores', size=28, y=1.01)
+plt.title(r'GAN, LDA: B. Acc.', size=28, y=1.01)
 plt.xlabel('Number of Original Samples')
 plt.ylabel('Number of Generated Samples')
-plt.savefig("Mixup hard MLP F2", dpi=1000, bbox_inches = 'tight')
+plt.savefig("GAN LDA bacc", dpi=1000, bbox_inches = 'tight')
 plt.show()
 
 
