@@ -123,6 +123,7 @@ def load_data():
 
 
 (X_train, y_train), (X_test, y_test) = load_data()
+X_test = X_test.reshape(-1, 19*25)
 
 
 def load_mixup_data():
@@ -143,7 +144,7 @@ yfakemax = yfake.argsort()[:, -2:][:, ::-1]
 Ymax = yfakemax[:, 0]
 Ymin = yfakemax[:, 1]
 
-n = 1
+n = 10000
 fake_chew = xfake[Ymax == 0]
 fake_chew_ymin = Ymin[Ymax == 0]
 fake_chew_ymax = Ymax[Ymax == 0]
@@ -223,23 +224,64 @@ for i, pc_fake_artifact in enumerate(pc_fake_artifacts):
 
     for j in range(6):
         if i != j:
-            new_pc_fake_artifact = pc_fake_artifact[fake_artifacts_ymin[i] == j]
+            if len(pc_fake_artifact[fake_artifacts_ymin[i] == j]) > 0:
+                idx = np.random.choice(range(len(pc_fake_artifact[fake_artifacts_ymin[i] == j])), 20)
+                new_pc_fake_artifact = pc_fake_artifact[fake_artifacts_ymin[i] == j][idx]
             ax.plot(new_pc_fake_artifact[:, pc1], new_pc_fake_artifact[:, pc2], c=my_colors[i],
                     marker='.', linestyle='',
                     markersize=15,
                     markeredgewidth=0,
                     markerfacecoloralt=my_colors[j],
                     # markerfacecoloralt='green',
-                    markeredgecolor='None',
-                    fillstyle='left',
-                    label=f'{i, j}')
+                    markeredgecolor='white',
+                    fillstyle='left')
 #%%
-h, l = ax.get_legend_handles_labels()
-idx = np.random.choice(range(len(h)), 9, replace=False)
 
-h = np.array(h)[idx.astype(int)]
-l = np.array(l)[idx.astype(int)]
 
-plt.legend(h, l, bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
-plt.title(r"\textbf{PCA Plot of Fake Artifact}", size=22)
+# ORGANIZING ARTIFACT DATA
+
+
+real_chew = X_test[y_test == 0]
+real_elpp = X_test[y_test == 1]
+real_eyem = X_test[y_test == 2]
+real_musc = X_test[y_test == 3]
+real_shiv = X_test[y_test == 4]
+real_null = X_test[y_test == 5]
+
+real_artifacts = [real_chew, real_elpp, real_eyem, real_musc, real_shiv]
+
+
+#%%
+
+## ORIGINAL DATA
+names = ['chew', 'elpp', 'eyem', 'musc', 'shiv']
+artifact_names = ['Chewing', 'Electrode Pop', 'Eye Movement', 'Muscle', 'Shivering', 'Null']
+
+my_colors = ["#f5cf40", "#e63f47", "#0ed280", "#fc7323", "#79218f", "#828bf2", 'b']
+markers = ["*", "s", "^", "D", "P"]
+
+pca = PCA(n_components=2)
+pca.fit(X_train.reshape(-1, 19*25))
+
+
+pc_real_artifacts = []
+pc_GAN_artifacts = []
+pc_mixup_artifacts = []
+
+for real_artifact in real_artifacts:
+    pc_real_artifacts.append(pca.transform(real_artifact))
+
+pc_real_null = pca.transform(real_null)
+
+pc1 = 0
+pc2 = 1
+ax.scatter(pc_real_null[:,pc1][0], pc_real_null[:,pc2][0], c=my_colors[5], label=names[0])
+for i, pc_real_artifact in enumerate(pc_real_artifacts):
+    ax.scatter(pc_real_artifact[:,pc1][0], pc_real_artifact[:,pc2][0],color=my_colors[i], label=names[i])
+
+plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2.5)
+
+#plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left', markerscale=2)
+plt.title(r"\textbf{PCA Plot of Soft mixup Data}", size=18)
+plt.savefig("PCA soft mixup data", dpi=1000, bbox_inches = 'tight')
 plt.show()
