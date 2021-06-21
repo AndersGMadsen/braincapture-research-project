@@ -8,11 +8,24 @@ In order to run the experiments, you need to download the TUH EEG Artifact Corpu
 Afterwards, you need to run the preprocessing of the raw EEG files. In this project, we used the preprocessing made by David NyrnBerg which can be found here: https://github.com/DavidEnslevNyrnberg/DTU_DL_EEG
 
 ## Experiment: Sampling
-In the sampling experiment folder, there is a single file experiment.py, that is needed to run the experiment.
+In the sampling experiment folder, there is a single file experiment.py, that is needed to run the experiment. The experiment performs a repeat two-level cross-validation with hyperparameter optimization. The code is made to run each fold in parallel. Here is an example of how the experiment is run with the LDA learning algorithm and random undersampling with SMOTE.
 
 ```python
-python experiment.py --x multiclass_X_new.npy --y multiclass_y_new.npy --groups multiclass_patients_new.npy --model LDA --technique 4 --n_repeats 5 --seed 55784899 --optimize 25 --n_parallel 25 --logging batchresults/LDA_4_16-06-21_12-14-22.out --downsample -1.0 --n_jobs_optimize 1
+python experiment.py --x multiclass_X_new.npy --y multiclass_y_new.npy --groups multiclass_patients_new.npy --model LDA --technique 4 --n_repeats 5 --seed 55784899 --optimize 25 --n_parallel 25 --logging LDA_4_16-06-21_12-14-22.out
 ```
+The input parameters are as follows:
+- **x** : Preprocessed EEG data
+- **y** : Labels for the preprocessed EEG data
+- **groups** : Patients groups in order to make StratifedGroupKFold Cross-Validation
+- **model** : The learning algorithm used in the experiment. Hyperparameter space is already defined.
+- **technique** : Sampling method
+- **n_repeat** : Number of times to repeat the cross-validation
+- **seed** : The seed used for the experiment
+- **Optimize** : Number of models trained in the hyperparameter optimization
+- **n_parallel** : Number of cores to use
+- **logging** : Logfile
+There are more parameters which can be seen in the code.
+
 
 ## Experiment: Mixup
 
