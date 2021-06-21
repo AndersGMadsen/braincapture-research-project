@@ -31,18 +31,11 @@ There are more parameters which can be seen in the code.
 ## Experiment: Mixup
 The Mixup folder consists of two scripts neccessary to generate and visualise Mixup Augmented data. Mixupgenerator.py generates a Mixup dataset containing 50000 data points. The mixup function generates the augmented data using the help function mix. 
 
-The input parameters are:
-- **X_train**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the preprocessed EEG data as input.
-- **y_train:**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the labels for preprocessed EEG data as input.
-- **g_train**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the groups for preprocessed EEG data as input.
-- **size**: The size of the Mixup dataset. 
-- **seed** : The seed used for the experiment
-
-The same seed value as the previous experiment is used. This is an example of how mixupgenerator.py is run with the parameters from the our experiment:
-
-```python
-python mixupgenerator.py --X_train X_train_Stratified.npy --y_train y_train_Stratified.npy --g_train g_train_Stratified.npy --size 50000 --seed 55784899
-```
+The input parameters of mixuo function are:
+- **X_train**: Preprocessed EEG data - training set
+- **y_train:**: Labels of the training set
+- **g_train**: Groups of the training set
+- **size**: The size of the desired Mixup dataset
 
 ## Experiment: GAN
 In the GAN folder, a the few scripts that are necissary to genrated fake data can be found. First, the file TUH_GAN_v4_server.py trains the GAN on data from one of the artifacts and saves the model parameters in a folder generator_models. The artifact as well as the number of epochs to train the models must be specified. For example,
