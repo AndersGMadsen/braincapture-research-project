@@ -10,6 +10,10 @@ Afterwards, you need to run the preprocessing of the raw EEG files. In this proj
 ## Experiment: Sampling
 In the sampling experiment folder, there is a single file experiment.py, that is needed to run the experiment.
 
+```python
+python experiment.py --x multiclass_X_new.npy --y multiclass_y_new.npy --groups multiclass_patients_new.npy --model LDA --technique 4 --n_repeats 5 --seed 55784899 --optimize 25 --n_parallel 25 --logging batchresults/LDA_4_16-06-21_12-14-22.out --downsample -1.0 --n_jobs_optimize 1
+```
+
 ## Experiment: Mixup
 
 ## Experiment: GAN
