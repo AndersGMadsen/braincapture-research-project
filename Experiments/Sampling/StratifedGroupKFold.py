@@ -1,18 +1,7 @@
 import numpy as np
 import random
 from collections import Counter, defaultdict
-from tqdm import tqdm
 from sklearn.utils import check_random_state
-# warnings.simplefilter("ignore", UserWarning)
-
-x_path = r"C:\Users\andersgm\Documents\Courses\02466 Project work F21\Project\multiclass_X_new.npy"
-y_path = r"C:\Users\andersgm\Documents\Courses\02466 Project work F21\Project\multiclass_y_new.npy"
-groups_path = r"C:\Users\andersgm\Documents\Courses\02466 Project work F21\Project\multiclass_patients_new.npy"
-verbose = True
-seed = 55784899
-
-np.random.seed(seed)
-random.seed(seed)
 
 class StratifiedGroupKFold():
 
@@ -85,38 +74,3 @@ class StratifiedGroupKFold():
                 
                 # Yields the indices as they are needed
                 yield repeat, fold, train_indices, test_indices
-
-
-# %%
-
-X = np.load(x_path)
-X = X.reshape(-1, np.product(X.shape[1:]))
-y = np.load(y_path)
-num_classes = len(np.unique(y))
-
-groups = np.load(groups_path, allow_pickle=True)
-unique_groups = np.unique(groups)
-
-# %%
-n_outer = 5
-n_repeats = 500
-outerfold = StratifiedGroupKFold(k=n_outer, n_repeats=n_repeats, seed=seed)
-
-par_seen = []
-val_seen = []
-
-
-for repeat, fold, par_idxs, val_idxs in tqdm(outerfold.split(X, y, groups), total=n_repeats*n_outer):
-    # -----------------------------------------------------------------------
-    par_seen.append(np.sort(par_idxs))
-    val_seen.append(np.sort(val_idxs))
-    #-----------------------------------------------------------------------
-
-#%%
-for i in range(n_outer*n_repeats):
-    for j in range(i+1, n_outer*n_repeats):
-        if len(par_seen[i]) == len(par_seen[j]) and np.all(par_seen[i] == par_seen[j]):
-            print(False)
-
-        if len(val_seen[i]) == len(val_seen[j]) and np.all(val_seen[i] == val_seen[j]):
-            print(False)
