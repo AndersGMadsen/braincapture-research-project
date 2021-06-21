@@ -29,6 +29,20 @@ There are more parameters which can be seen in the code.
 
 
 ## Experiment: Mixup
+The Mixup folder consists of two scripts neccessary to generate and visualise Mixup Augmented data. Mixupgenerator.py generates a Mixup dataset containing 50000 data points. The mixup function generates the augmented data using the help function mix. 
+
+The input parameters are:
+- **X_train**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the preprocessed EEG data as input.
+- **y_train:**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the labels for preprocessed EEG data as input.
+- **g_train**: Obtained from the StratifiedGroup Cross-Validation with split 80:20 on the groups for preprocessed EEG data as input.
+- **size**: The size of the Mixup dataset. 
+- **seed** : The seed used for the experiment
+
+The same seed value as the previous experiment is used. This is an example of how mixupgenerator.py is run with the parameters from the our experiment:
+
+```python
+python mixupgenerator.py --X_train X_train_Stratified.npy --y_train y_train_Stratified.npy --g_train g_train_Stratified.npy --size 50000 --seed 55784899
+```
 
 ## Experiment: GAN
 In the GAN folder, a the few scripts that are necissary to genrated fake data can be found. First, the file TUH_GAN_v4_server.py trains the GAN on data from one of the artifacts and saves the model parameters in a folder generator_models. The artifact as well as the number of epochs to train the models must be specified. For example,
@@ -42,4 +56,4 @@ Specifically, the input parameters are:
 - **artifact**: An aritfact (integer) in range 0-4: {0: chew, 1: elpp, 2: eyem, 3: musc, 4: shiv}.
 - **epochs**: An integer desribing the number of epochs to train the GAN (at least 100 is recommended).
 
-When a generator is trained, the file generate_images.py can be run to generate new and augmented data. Inside the script, the exact path to the saved model parameters as well as a path describing where to save the new data need to be specified. Now, the GAN generated data can be explored!
+When a generator is trained, the file generate_images.py can be run to generate new and augmented data. Inside the script, the exact path to the saved model parameters as well as a path describing where to save the new data need to be specified. Now, the GAN generated can be explored!
