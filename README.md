@@ -2,9 +2,6 @@
 Here is the repository for the BrainCapture Research Project at the Technical University of Denmark.
 The repository consists of three folders. In the Experiments folder is the description and code needed to reproduce the experiments along with the results. In the Data Analysis folder is the code used to analyse the data and generate visualization. This code is unorganized and uncommented. Lastly, in the PilotScript folder, the pilot scripts can be seen that was used to research before the main experiments.
 
-## Reproducibility
-The results of the experiments can be found in this repository. The results can also be reproduced with the seed 55784899.
-
 ## Data
 In order to run the experiments, you need to download the TUH EEG Artifact Corpus, which is freely available at Temple University here: https://www.isip.piconepress.com/projects/tuh_eeg/html/downloads.shtml
 
@@ -34,3 +31,15 @@ There are more parameters which can be seen in the code.
 ## Experiment: Mixup
 
 ## Experiment: GAN
+In the GAN folder, a the few scripts that are necissary to genrated fake data can be found. First, the file TUH_GAN_v4_server.py trains the GAN on data from one of the artifacts and saves the model parameters in a folder generator_models. The artifact as well as the number of epochs to train the models must be specified. For example,
+
+```python
+python TUH_GAN_v4_server.py --artifact 2 --epochs 100
+```
+trains a GAN on Eye Movement data for 100 epochs.
+
+Specifically, the input parameters are:
+- **aritfacts**: An aritfact (integer) in range 0-4: {0: chew, 1: elpp, 2: eyem, 3: musc, 4: shiv}.
+- **epochs**: An integer desribing the number of epochs to train the GAN (at least 100 is recommended).
+
+When a generator is trained, the file generate_images.py can be run to generate new and augmented data. Inside the script, the exact path to the saved model parameters as well as a path describing where to save the new data need to be specified. Now, the GAN generated can be explored!
