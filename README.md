@@ -24,6 +24,7 @@ The input parameters are as follows:
 - **Optimize** : Number of models trained in the hyperparameter optimization
 - **n_parallel** : Number of cores to use
 - **logging** : Logfile
+
 There are more parameters which can be seen in the code.
 
 
