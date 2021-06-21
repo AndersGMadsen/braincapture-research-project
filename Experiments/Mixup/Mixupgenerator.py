@@ -233,9 +233,6 @@ unique_groups = np.arange(len(unique_patients))
 for i, patient in enumerate(unique_patients):
     groups[patients == patient] = i
 
-best_hyperparametes = []
-print('X', X.shape, 'y', y.shape, 'groups',groups.shape)
-
 #cross validation
 _, _, train_idx, test_idx = list(StratifiedGroupKFold(k=5, n_repeats=1, seed=seed).split(X, y, patients))[0]
 
@@ -247,11 +244,10 @@ testX, testy, testg = X[test_idx], y[test_idx], groups[test_idx]
 scaler = StandardScaler().fit(trainX)
 trainX = scaler.transform(trainX)
 testX = scaler.transform(testX)
-print('trainX', np.shape(trainX), 'testX', np.shape(testX), 'trainy', np.shape(trainy), 'testy', np.shape(testy))
-#save mixup set
+#Generate mixup dataset
 
 mix_X, mix_y, mix_y_soft, y_1s, y_2s, lams, g1s, g2s = mixup(trainX, trainy, traing, size=50000)
-
+#save mixup data
 np.save("X_mixup_train_stratified.npy", mix_X)
 np.save("y_mixup_train_stratified.npy", mix_y)
 np.save('y_mixup_soft_train_stratified.npy', mix_y_soft)
