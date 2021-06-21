@@ -147,30 +147,26 @@ def load_GAN_data():
 
 
 def load_mixup_data():
-    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_mixup_train_stratified_hard.npy'
-    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_hard.npy'
 
-    X_mixup_hard = np.load(X_path)
-    y_mixup_hard = np.load(y_path)
+    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_mixup_train_stratified.npy'
+    y_soft_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_soft.npy'
+    y_hard_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_hard.npy'
 
-    X_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/X_mixup_train_stratified_soft.npy'
-    y_path = '/home/williamtheodor/Documents/Fagpakke/epilepsy-project/GAN/Data/y_mixup_train_stratified_soft.npy'
+    X_mixup = np.load(X_path)
+    y_mixup_soft = np.load(y_soft_path)
+    y_mixup_hard = np.load(y_hard_path)
 
-    X_mixup_soft = np.load(X_path)
-    y_mixup_soft = np.load(y_path)
-
-    return (X_mixup_hard, y_mixup_hard), (X_mixup_soft, y_mixup_soft)
+    return (X_mixup, y_mixup_soft, y_mixup_hard)
 
 
 def get_data():
 
     (X_train, y_train), (X_test, y_test) = load_data()
     (X_GAN, y_GAN) = load_GAN_data()
-    (X_mixup_hard, y_mixup_hard), (X_mixup_soft, y_mixup_soft) = load_mixup_data()
+    (X_mixup, y_mixup_soft, y_mixup_hard)= load_mixup_data()
 
     X_GAN = np.reshape(X_GAN, (100000, 19, 25))
-    X_mixup_hard = np.reshape(X_mixup_hard, (53050, 19, 25))
-    X_mixup_soft = np.reshape(X_mixup_soft, (50000, 19, 25))
+    X_mixup = np.reshape(X_mixup, (50000, 19, 25))
 
     n_under = 30000
 
@@ -211,10 +207,10 @@ def get_data():
         X_train_GAN = np.concatenate((X_train_GAN, X_GAN[idx_GAN]))
         y_train_GAN = np.concatenate((y_train_GAN, y_GAN[idx_GAN]))
 
-        X_train_mixup_hard = np.concatenate((X_train_mixup_hard, X_mixup_hard[idx_mixup_hard]))
+        X_train_mixup_hard = np.concatenate((X_train_mixup_hard, X_mixup[idx_mixup_hard]))
         y_train_mixup_hard = np.concatenate((y_train_mixup_hard, y_mixup_hard[idx_mixup_hard]))
 
-        X_train_mixup_soft = np.concatenate((X_train_mixup_soft, X_mixup_soft[idx_mixup_soft]))
+        X_train_mixup_soft = np.concatenate((X_train_mixup_soft, X_mixup[idx_mixup_soft]))
         y_train_mixup_soft = np.concatenate((y_train_mixup_soft, y_mixup_soft[idx_mixup_soft]))
 
     shuffler_GAN = np.random.permutation(len(X_train_GAN))
@@ -254,7 +250,7 @@ def run_experiment():
     LDA = LinearDiscriminantAnalysis()
     MLPreg = MLPRegressor(activation='logistic', max_iter=50)
     MLPCl = MLPClassifier(max_iter=50)
-    model = MLPCl
+    model = LDA
 
     mlp = True
 
@@ -310,18 +306,21 @@ def run_experiment():
                mixup_hard_bacc, mixup_hard_f1, mixup_hard_f2, mixup_hard_report,
                mixup_soft_bacc, mixup_soft_f1, mixup_soft_f2, mixup_soft_report]
 
+
     else:
         results = [baseline_bacc, baseline_f1, baseline_f2, baseline_report,
                    SMOTE_bacc, SMOTE_f1, SMOTE_f2, SMOTE_report,
                    GAN_bacc, GAN_f1, GAN_f2, GAN_report,
                    mixup_hard_bacc, mixup_hard_f1, mixup_hard_f2, mixup_hard_report]
 
-    return results
+    predictions = [baseline_pred, SMOTE_pred, GAN_pred, mixup_hard_pred, mixup_soft_pred_hard]
+    return results, predictions
 
 
-results = run_experiment()
+results, predictions = run_experiment()
 
 #%%
+np.save('pred: rus, SMOTE, GAN, mixup_hard, mixup_soft', predictions)
 print('Random under, b. acc.:', results[0])
 print('Random under, f1:', results[1])
 print('Random under, f2:', results[2])
