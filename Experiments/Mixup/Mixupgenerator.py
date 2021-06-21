@@ -260,19 +260,3 @@ np.save('y_2hard.npy', y_2s)
 np.save('lambdas.npy',lams)
 np.save('groups1.npy', g1s)
 np.save('groups2.npy', g2s)
-
-#save downsampled train set
-sampler = RandomUnderSampler(sampling_strategy={2: 10000, 3: 10000, 5: 10000}, random_state=55784899)
-trainX, trainy = sampler.fit_resample(trainX, trainy)
-shuffler = np.random.permutation(len(trainy))
-trainX, trainy, traing = trainX[shuffler], trainy[shuffler], traing[shuffler]
-ohe = OneHotEncoder()
-ohe.fit([[0], [1], [2], [3], [4], [5]])
-trainy_soft = ohe.transform(trainy.reshape(-1, 1)).toarray()
-
-np.save("X_orig_train_stratified_withgs.npy", trainX)
-np.save("y_orig_train_stratified_withgs.npy", trainy)
-np.save('ysoft_orig_train_stratified_withgs.npy', trainy_soft)
-np.save('trainingpatients.npy', traing)
-np.save("X_orig_test_stratified.npy", testX)
-np.save("y_orig_test_stratified.npy", testy)
