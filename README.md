@@ -42,4 +42,4 @@ Specifically, the input parameters are:
 - **artifact**: An aritfact (integer) in range 0-4: {0: chew, 1: elpp, 2: eyem, 3: musc, 4: shiv}.
 - **epochs**: An integer desribing the number of epochs to train the GAN (at least 100 is recommended).
 
-When a generator is trained, the file generate_images.py can be run to generate new and augmented data. Inside the script, the exact path to the saved model parameters as well as a path describing where to save the new data need to be specified. Now, the GAN generated can be explored!
+When a generator is trained, the file generate_images.py can be run to generate new and augmented data. Inside the script, the exact path to the saved model parameters as well as a path describing where to save the new data need to be specified. Now, the GAN generated data can be explored!
